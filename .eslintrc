@@ -180,7 +180,11 @@
       "beforeBlockComment": true
     }],
     "max-depth": [2, 4],
-    "max-len": [2, 120, 4],
+    "max-len": [
+      2,
+      240,
+      4
+    ],
     "max-nested-callbacks": [2, 4],
     "max-params": [0],
     "max-statements": [0],

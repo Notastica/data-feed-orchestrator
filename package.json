@@ -36,7 +36,7 @@
   "author": {
     "name": "Rafael Roman",
     "email": "rafael@notastica.org",
-    "url": "https://notastiga.org"
+    "url": "https://notastica.org"
   },
   "pre-commit": [
     "validate"

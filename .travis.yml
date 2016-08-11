@@ -1,12 +1,20 @@
 language: node_js
 node_js:
-  - "5"
-  - "6"
+- '5'
+- '6'
 install:
-  - npm install
+- npm install
 script:
-  - npm run check
-  - npm run build
-  - npm run validate
+- npm run check
+- npm run build
+- npm run validate
 after_success:
-  - npm run coveralls
+- npm run coveralls
+deploy:
+  provider: npm
+  email: panthro.rafael@gmail.com
+  api_key:
+    secure: c7vOmwD6h7NQrAPZNM7+Gs7nRCC4o0RmRUDJYCQ7Yy8b8zCHK7CI04uQorW5f3allEg9f1qs4GBqtKIosINLO4Nijw0yYVhXpKrCMhg90I1AZdF5guZf0SiMmM+Sw9WnrR9E27wmhSwTcSC1eylHL+lxjeXReNnNlDfGUvqZUW57MXV9lYCNBP9OwEkgMYPVodS/2jBbC5S/ZFn7Ce4OWdp9vE298NwnqWKHQHFF8GgWCqUz7JNPH1JH72+I+Dws7hAYbZTk5d9srqpnD+uNlWozwrfixeMmCn1EeIrfhuiqXIa7hedT0UxPs9qHtPgEBwSrGEAPpp3ulj1Xpn5NvVKKxZqxkxf7QFnRNOh1kTbyLHz+qTqJqJRGWUGbrlaA64KPZQeJJIfpDfTMeSRDdQ4D7hXMttksRSeTpf358oTwqqSFx2CFSAQk1IC4DNhkTBEv91+9ELJ+9eFasfVIVIl5oS1yty0XOKVviTAO0YMsGFV2vH6PfyEuLDbjRI2I7Vhw1uu//YsAjIaY3D3h9hds87XzoTPgiVE981L4u1UDtZQKWSisNy3lK7ZV934qRFvYSA3td0hfkr+7wImnsQCsR+MzjjDjP8J7nU4lHehxfzypC5VH8CsL3/HeWT48mm5V2DagBfWJf/d472rbXech1f84xk5q8Sjvx7QTL2w=
+  on:
+    tags: true
+    repo: Notastica/data-feed-orchestrator

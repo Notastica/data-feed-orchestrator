@@ -1,4 +1,11 @@
-import { expect } from 'chai';
+/**
+ * Common test Dependencies
+ */
+
+import * as chai from 'chai';
+import dirtyChai from 'dirty-chai';
+
+chai.use(dirtyChai);
 
 describe('Logger', function () {
   beforeEach(function () {
@@ -8,25 +15,21 @@ describe('Logger', function () {
   it('should return a valid logger', function () {
     const logger = require('../src/logging/logger');
 
-    return expect(logger).not.to.be.undefined;
+    return chai.expect(logger).not.to.be.undefined;
   });
 
 
   it('should return level debug when in dev', function () {
+    const oldEnv = process.env.NODE_ENV;
+
     process.env.NODE_ENV = 'dev';
     require.cache = {};
+
     delete require.cache[require.resolve('../src/logging/logger')];
+
     const logger = require('../src/logging/logger');
 
-    return expect(logger.default.level).to.be.equals('debug');
-  });
-
-  it('should return level info when in prod', function () {
-    process.env.NODE_ENV = 'production';
-    require.cache = {};
-    delete require.cache[require.resolve('../src/logging/logger')];
-    const logger = require('../src/logging/logger');
-
-    return expect(logger.default.level).to.be.equals('debug');
+    process.env.NODE_ENV = oldEnv;
+    chai.expect(logger.default.level).to.be.equals('debug');
   });
 });

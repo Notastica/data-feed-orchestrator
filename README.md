@@ -1,6 +1,9 @@
 <big><h1 align="center">data-feed-orchestrator</h1></big>
 
 <p align="center">
+  <a href="https://www.codacy.com/app/Notastica/data-feed-orchestrator?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Notastica/data-feed-orchestrator&amp;utm_campaign=Badge_Grade">
+    <img src="https://api.codacy.com/project/badge/Grade/a22cdb0e4712418d898e301da3f92bbf"/>
+  </a>
   <a href="https://npmjs.org/package/data-feed-orchestrator">
     <img src="https://img.shields.io/npm/v/data-feed-orchestrator.svg" alt="NPM Version">
   </a>
@@ -47,11 +50,6 @@ npm install data-feed-orchestrator
 ```sh
 // TODO
 ```
-
-## Author
-
-Rafael Roman rafael.roman@gft.com https://notastiga.org
-
 ## License
 
 - **MIT** : http://opensource.org/licenses/MIT

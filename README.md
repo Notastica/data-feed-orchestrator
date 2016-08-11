@@ -47,11 +47,6 @@ npm install data-feed-orchestrator
 ```sh
 // TODO
 ```
-
-## Author
-
-Rafael Roman rafael.roman@gft.com https://notastiga.org
-
 ## License
 
 - **MIT** : http://opensource.org/licenses/MIT

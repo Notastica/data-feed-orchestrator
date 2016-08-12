@@ -6,10 +6,14 @@ import mq from '../src/mq/connection';
 
 describe('MQ', function () {
   it('Should reject when connection fails', function (done) {
-    mq().then(() => {
+    mq({ url: 'amqp://localhost:555' }).then(() => {
       done(new Error('Should not return valid connection'));
     }).catch(() => {
       done();
     });
+  });
+
+  it('Should resolve to a valid client', function () {
+    return mq();
   });
 });

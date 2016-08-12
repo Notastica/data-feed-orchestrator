@@ -1,16 +1,16 @@
-import amqp from 'node-amqp';
+import amqp from 'amqp';
 import logger from '../logging/logger';
 
 /**
  * Connects to an amqp instance and return a promise that resolves to the connection
- * @param url {String} the mq url
+ * @param options {Object} the mq options more on https://github.com/postwait/node-amqp#connection-options-and-url
  * @return {Promise}
  */
 
-export default (url) => {
+export default (options) => {
   return new Promise((resolve, reject) => {
     logger.info('Connecting to mq');
-    const connection = amqp.createConnection(url);
+    const connection = amqp.createConnection(options);
 
     connection.on('ready', () => {
       logger.info('Connected to mq');

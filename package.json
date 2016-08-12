@@ -21,7 +21,7 @@
   "scripts": {
     "start": "export NODE_ENV=development|| set NODE_ENV=development&& babel-node --presets es2015 src/server.js",
     "audit": "nsp check package",
-    "build": "babel -d ./ ./src",
+    "build": "babel -d ./out ./src",
     "check": "npm run audit && npm outdated --depth 0",
     "coverage": "nyc --reporter=lcov --reporter=text --reporter=html npm test",
     "coveralls": "npm run coverage && cat ./coverage/lcov.info | coveralls && rm -rf ./coverage",
@@ -43,6 +43,7 @@
     "validate"
   ],
   "dependencies": {
+    "amqp": "^0.2.6",
     "body-parser": "^1.15.2",
     "chalk": "^1.1.1",
     "elasticsearch": "^11.0.1",
@@ -51,7 +52,6 @@
     "isprod": "^1.1.0",
     "jsonpath": "^0.2.6",
     "lokijs": "^1.4.1",
-    "node-amqp": "^1.2.1",
     "node-uuid": "^1.4.7",
     "winston": "^2.2.0"
   },

@@ -43,6 +43,7 @@
     "validate"
   ],
   "dependencies": {
+    "amqp": "^0.2.6",
     "body-parser": "^1.15.2",
     "chalk": "^1.1.1",
     "elasticsearch": "^11.0.1",
@@ -51,7 +52,6 @@
     "isprod": "^1.1.0",
     "jsonpath": "^0.2.6",
     "lokijs": "^1.4.1",
-    "node-amqp": "^1.2.1",
     "node-uuid": "^1.4.7",
     "winston": "^2.2.0"
   },

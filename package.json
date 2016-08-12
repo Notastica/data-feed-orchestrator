@@ -21,7 +21,7 @@
   "scripts": {
     "start": "export NODE_ENV=development|| set NODE_ENV=development&& babel-node --presets es2015 src/server.js",
     "audit": "nsp check package",
-    "build": "babel -d ./ ./src",
+    "build": "babel -d ./out ./src",
     "check": "npm run audit && npm outdated --depth 0",
     "coverage": "nyc --reporter=lcov --reporter=text --reporter=html npm test",
     "coveralls": "npm run coverage && cat ./coverage/lcov.info | coveralls && rm -rf ./coverage",

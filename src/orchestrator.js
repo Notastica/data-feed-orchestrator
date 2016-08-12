@@ -86,7 +86,8 @@ export const register = (module) => {
     if (isRegistered(module)) {
       logger.info(`Module ${module.name} already registered for uuir ${module.uuid}`);
       logger.info('Unregistering previously registered module, to register the new one');
-      unregister(modules.find({ uuid: module.uuid })[0]);
+      return unregister(modules.find({ uuid: module.uuid })[0])
+        .then(() => register(module));
     }
     module.order = order++;
     return modules.insert(module);

@@ -7,6 +7,7 @@ import dirtyChai from 'dirty-chai';
 import Orchestrator from '../src/orchestrator';
 import uuid from 'node-uuid';
 import Module from '../src/model/module';
+import dockerNames from 'docker-names';
 
 // TEST SETUP
 // =============================================================================
@@ -14,12 +15,14 @@ chai.use(dirtyChai);
 
 
 describe('Orchestrator', function () {
+  const serviceName = dockerNames.getRandomName(false);
+
 
   it('Should reject when not initialized', function () {
     return new Promise((resolve, reject) => {
       const or = new Orchestrator();
 
-      or.register(new Module({ name: 'test' })).then(reject, resolve); // orders flipped as it should be rejected
+      or.register(new Module({ name: 'test', service: serviceName })).then(reject, resolve); // orders flipped as it should be rejected
     });
   });
 
@@ -37,6 +40,7 @@ describe('Orchestrator', function () {
       const moduleUUID = uuid.v4();
 
       return o.register(new Module({
+        service: serviceName,
         name: name,
         uuid: moduleUUID,
         negativePath: negativePath
@@ -62,7 +66,7 @@ describe('Orchestrator', function () {
       const name = 'test-processor';
 
 
-      return o.register(new Module({ name: name })).then((module) => {
+      return o.register(new Module({ service: serviceName, name: name })).then((module) => {
         chai.expect(module).not.to.be.undefined();
         chai.expect(module.uuid).not.to.be.undefined();
         chai.expect(module.name).to.be.equals(name);
@@ -76,7 +80,7 @@ describe('Orchestrator', function () {
     return o.init().then(() => {
       const name = 'test-processor';
 
-      return o.register(new Module({ name: name })).then((module) => {
+      return o.register(new Module({ service: serviceName, name: name })).then((module) => {
         chai.expect(module).not.to.be.undefined();
         chai.expect(module.uuid).not.to.be.undefined();
         chai.expect(module.name).to.be.equals(name);
@@ -93,7 +97,7 @@ describe('Orchestrator', function () {
     const o = new Orchestrator();
 
     return o.init().then(() => {
-      const originalModule = new Module();
+      const originalModule = new Module({ service: serviceName });
 
       originalModule.negativePath = '$.negativeKeyName';
 
@@ -112,7 +116,7 @@ describe('Orchestrator', function () {
     const o = new Orchestrator();
 
     return o.init().then(() => {
-      const originalModule = new Module();
+      const originalModule = new Module({ service: serviceName });
 
       originalModule.negativePath = '$.key';
 
@@ -129,7 +133,7 @@ describe('Orchestrator', function () {
     const o = new Orchestrator();
 
     return o.init().then(() => {
-      const originalModule = new Module();
+      const originalModule = new Module({ service: serviceName });
 
       originalModule.positivePath = '$.positiveKeyName';
 
@@ -148,7 +152,7 @@ describe('Orchestrator', function () {
     const o = new Orchestrator();
 
     return o.init().then(() => {
-      const originalModule = new Module();
+      const originalModule = new Module({ service: serviceName });
 
       originalModule.positivePath = '$.BadPositiveKeyName';
 

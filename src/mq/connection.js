@@ -1,4 +1,4 @@
-import amqp from 'amqp';
+import { createConnection } from 'amqp';
 import logger from '../logging/logger';
 
 /**
@@ -10,7 +10,7 @@ import logger from '../logging/logger';
 export default (options) => {
   return new Promise((resolve, reject) => {
     logger.info('Connecting to mq');
-    const connection = amqp.createConnection(options);
+    const connection = createConnection(options);
 
     connection.on('ready', () => {
       logger.info('Connected to mq');

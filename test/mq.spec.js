@@ -1,4 +1,5 @@
-import mq from '../src/mq/connection';
+import * as mq from '../src/mq/connection';
+import dockerNames from 'docker-names';
 
 /**
  * Test dependencies
@@ -6,7 +7,7 @@ import mq from '../src/mq/connection';
 
 describe('MQ', function () {
   it('Should reject when connection fails', function (done) {
-    mq({ url: 'amqp://localhost:555' }).then(() => {
+    mq.connect({ url: 'amqp://localhost:555' }).then(() => {
       done(new Error('Should not return valid connection'));
     }).catch(() => {
       done();
@@ -14,6 +15,12 @@ describe('MQ', function () {
   });
 
   it('Should resolve to a valid client', function () {
-    return mq();
+    return mq.connect();
+  });
+
+  it('Should return a valid queue', function () {
+    return mq.connect().then((client) => {
+      return mq.bindToQueue(client, dockerNames.getRandomName(false));
+    });
   });
 });

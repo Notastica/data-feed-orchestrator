@@ -3,11 +3,11 @@ import logger from '../logging/logger';
 
 /**
  * Connects to an amqp instance and return a promise that resolves to the connection
- * @param options {Object} the mq options more on https://github.com/postwait/node-amqp#connection-options-and-url
+ * @param [options] {Object} the mq options more on https://github.com/postwait/node-amqp#connection-options-and-url
  * @return {Promise}
  */
 
-export default (options) => {
+export const connect = (options) => {
   return new Promise((resolve, reject) => {
     logger.info('Connecting to mq');
     const connection = createConnection(options);
@@ -32,14 +32,20 @@ export default (options) => {
  * @param {Object} [options] see more: https://github.com/postwait/node-amqp#queue
  * @return {Promise}
  */
-export const queue = (connection, name, options) => {
+export const bindToQueue = (connection, name, options) => {
   return new Promise((resolve, reject) => {
     try {
-      connection.queue(name, options, (q) => {
+
+      const cb = (q) => {
+        logger.info('Connected to queue', name);
         resolve(q);
-      });
-    } catch (e) {
-      reject(e);
+      };
+
+      options = options || cb;
+      connection.queue(name, options, cb);
+    } catch (err) {
+      logger.warn('Could not connect to queue', name, err);
+      reject(err);
     }
   });
 };

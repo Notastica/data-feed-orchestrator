@@ -94,6 +94,7 @@ class Orchestrator {
       }
       logger.info(`[${symbols.check}] Elasticsearch disconnected`);
       this.running = false;
+      this.modulesCollection.clear();
     }
   }
 

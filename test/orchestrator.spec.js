@@ -38,7 +38,7 @@ describe('Orchestrator', function () {
   it('Should reregister a module if already registered', function () {
     // const o = new Orchestrator();
 
-    return o.listen(() => {
+    return o.listen().then(() => {
       const name = 'test-processor';
       const negativePath = '$';
       const updatedKeyValue = '$..name';
@@ -67,7 +67,7 @@ describe('Orchestrator', function () {
   it('Should register a module', function () {
     // const o = new Orchestrator();
 
-    return o.listen(() => {
+    return o.listen().then(() => {
       const name = 'test-processor';
 
 
@@ -82,7 +82,7 @@ describe('Orchestrator', function () {
   it('Should unregister a module', function () {
     // const o = new Orchestrator();
 
-    return o.listen(() => {
+    return o.listen().then(() => {
       const name = 'test-processor';
 
       return o.register(new Module({ service: serviceName, name: name })).then((module) => {
@@ -101,7 +101,7 @@ describe('Orchestrator', function () {
   it('Should find a module by negativePath', function () {
     // const o = new Orchestrator();
 
-    return o.listen(() => {
+    return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
       originalModule.negativePath = '$.negativeKeyName';
@@ -120,7 +120,7 @@ describe('Orchestrator', function () {
   it('Should NOT find a module by negativePath', function () {
     // const o = new Orchestrator();
 
-    return o.listen(() => {
+    return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
       originalModule.negativePath = '$.key';
@@ -129,7 +129,7 @@ describe('Orchestrator', function () {
         return o.findMatchingModules({ key: 'value' });
       }).then((modules) => {
         chai.expect(modules).to.be.a('array');
-        chai.expect(modules).to.be.empty();
+        chai.expect(modules).to.be.not.to.contains.key('uuid').that.is.equals(originalModule.uuid);
       });
     });
   });
@@ -137,7 +137,7 @@ describe('Orchestrator', function () {
   it('Should find a module by positivePath', function () {
     // const o = new Orchestrator();
 
-    return o.listen(() => {
+    return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
       originalModule.positivePath = '$.positiveKeyName';
@@ -156,7 +156,7 @@ describe('Orchestrator', function () {
   it('Should NOT find a module by positivePath', function () {
     // const o = new Orchestrator();
 
-    return o.listen(() => {
+    return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
       originalModule.positivePath = '$.BadPositiveKeyName';
@@ -165,7 +165,7 @@ describe('Orchestrator', function () {
         return o.findMatchingModules({ positiveKeyName: 'value' });
       }).then((modules) => {
         chai.expect(modules).to.be.a('array');
-        chai.expect(modules).to.be.empty();
+        chai.expect(modules).not.to.have.property('uuid').that.is.equals(originalModule.uuid);
       });
     });
   });

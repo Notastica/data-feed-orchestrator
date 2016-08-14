@@ -19,9 +19,10 @@
     "url": "https://github.com/Notastica/data-feed-orchestrator"
   },
   "scripts": {
-    "start": "export NODE_ENV=development|| set NODE_ENV=development&& babel-node --presets es2015 src/server.js",
+    "start": "export NODE_ENV=development|| set NODE_ENV=development&& babel-node --presets es2015 src/app.js",
+    "prod": "export NODE_ENV=production|| set NODE_ENV=production&& babel-node --presets es2015 src/app.js",
     "audit": "nsp check package",
-    "build": "babel -d ./out ./src",
+    "build": "babel -d ./lib ./src",
     "check": "npm run audit && npm outdated --depth 0",
     "coverage": "nyc --reporter=lcov --reporter=text --reporter=html npm test",
     "coveralls": "npm run coverage && cat ./coverage/lcov.info | coveralls && rm -rf ./coverage",
@@ -43,17 +44,16 @@
     "validate"
   ],
   "dependencies": {
-    "amqp": "^0.2.6",
+    "bluebird": "3.4.1",
     "body-parser": "^1.15.2",
     "chalk": "^1.1.1",
     "docker-names": "^1.0.0",
     "elasticsearch": "^11.0.1",
-    "express": "^4.14.0",
-    "express-winston": "^2.0.0",
     "isprod": "^1.1.0",
     "jsonpath": "^0.2.6",
     "lokijs": "^1.4.1",
     "node-uuid": "^1.4.7",
+    "rabbit.js": "0.4.4",
     "winston": "^2.2.0"
   },
   "devDependencies": {

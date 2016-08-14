@@ -22,9 +22,7 @@ describe('Orchestrator', function () {
 
   before(function () {
     o = new Orchestrator();
-    o.init().then(() => {
-      o.listen();
-    });
+    return o.listen();
   });
 
   after(function () {
@@ -33,23 +31,14 @@ describe('Orchestrator', function () {
 
   const serviceName = dockerNames.getRandomName(false);
 
-
-  it('Should reject when not initialized', function () {
-    return new Promise((resolve, reject) => {
-      const or = new Orchestrator();
-
-      or.register(new Module({ name: 'test', service: serviceName })).then(reject, resolve); // orders flipped as it should be rejected
-    });
-  });
-
   it('Should init with default options', function () {
-    return new Orchestrator().init();
+    return new Orchestrator();
   });
 
   it('Should reregister a module if already registered', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
+    return o.listen(() => {
       const name = 'test-processor';
       const negativePath = '$';
       const updatedKeyValue = '$..name';
@@ -78,7 +67,7 @@ describe('Orchestrator', function () {
   it('Should register a module', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
+    return o.listen(() => {
       const name = 'test-processor';
 
 
@@ -93,7 +82,7 @@ describe('Orchestrator', function () {
   it('Should unregister a module', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
+    return o.listen(() => {
       const name = 'test-processor';
 
       return o.register(new Module({ service: serviceName, name: name })).then((module) => {
@@ -112,7 +101,7 @@ describe('Orchestrator', function () {
   it('Should find a module by negativePath', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
+    return o.listen(() => {
       const originalModule = new Module({ service: serviceName });
 
       originalModule.negativePath = '$.negativeKeyName';
@@ -131,7 +120,7 @@ describe('Orchestrator', function () {
   it('Should NOT find a module by negativePath', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
+    return o.listen(() => {
       const originalModule = new Module({ service: serviceName });
 
       originalModule.negativePath = '$.key';
@@ -148,7 +137,7 @@ describe('Orchestrator', function () {
   it('Should find a module by positivePath', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
+    return o.listen(() => {
       const originalModule = new Module({ service: serviceName });
 
       originalModule.positivePath = '$.positiveKeyName';
@@ -167,7 +156,7 @@ describe('Orchestrator', function () {
   it('Should NOT find a module by positivePath', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
+    return o.listen(() => {
       const originalModule = new Module({ service: serviceName });
 
       originalModule.positivePath = '$.BadPositiveKeyName';
@@ -184,47 +173,40 @@ describe('Orchestrator', function () {
   it('Should listen with default options', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
-      return o.listen();
-    });
+    return o.listen();
   });
 
-  it('Should handle new modules registration by queue', function () {
-    // const o = new Orchestrator();
-
-    return o.init().then(() => {
-      return o.listen();
-    }).then(() => {
-      const m = new Module({ service: dockerNames.getRandomName(false) });
-
-      return o.onNewModule(m).then(() => {
-        chai.expect(o.isRegistered(m)).to.be.true();
-      });
-    });
-  });
+  // it('Should handle new modules registration by queue', function () {
+  //   // const o = new Orchestrator();
+  //
+  //   return o.listen().then(() => {
+  //     const m = new Module({ service: dockerNames.getRandomName(false) });
+  //
+  //     return o.onNewModule(m).then(() => {
+  //       chai.expect(o.isRegistered(m)).to.be.true();
+  //     });
+  //   });
+  // });
 
   it('Should reject when bad modules are passed', function () {
     // const o = new Orchestrator();
 
-    return o.init().then(() => {
-      return o.listen();
-    }).then(() => {
-      const m = { invalid_module: 'invalid' };
+    return o.listen()
+      .then(() => {
+        const m = { invalid_module: 'invalid' };
 
-      return o.onNewModule(m)
-        .catch((err) => {
-          chai.expect(err).to.be.not.null();
-        });
-    });
+        return o.onNewModule(m)
+          .catch((err) => {
+            chai.expect(err).to.be.not.null();
+          });
+      });
   });
 
   it('Should shutdown gracefully', function () {
     // const o = new Orchestrator();
 
-    return o.init()
+    return o.listen()
       .then(() => {
-        return o.listen();
-      }).then(() => {
         return o.shutdown();
       });
   });
@@ -232,10 +214,7 @@ describe('Orchestrator', function () {
   it('Should handle module registration on it\'s queue', function () {
     // const o = new Orchestrator();
 
-    return o.init()
-      .then(() => {
-        return o.listen();
-      })
+    return o.listen()
       .then(() => {
         const m = new Module({ service: dockerNames.getRandomName(false), registerQueue: o.registerQueue });
 

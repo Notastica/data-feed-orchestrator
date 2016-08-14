@@ -8,13 +8,29 @@ import Orchestrator from '../src/orchestrator';
 import uuid from 'node-uuid';
 import Module from '../src/model/module';
 import dockerNames from 'docker-names';
+import Promise from 'bluebird';
+
 
 // TEST SETUP
 // =============================================================================
 chai.use(dirtyChai);
 
+let o;
+
 
 describe('Orchestrator', function () {
+
+  before(function () {
+    o = new Orchestrator();
+    o.init().then(() => {
+      o.listen();
+    });
+  });
+
+  after(function () {
+    o.shutdown();
+  });
+
   const serviceName = dockerNames.getRandomName(false);
 
 
@@ -31,7 +47,7 @@ describe('Orchestrator', function () {
   });
 
   it('Should reregister a module if already registered', function () {
-    const o = new Orchestrator();
+    // const o = new Orchestrator();
 
     return o.init().then(() => {
       const name = 'test-processor';
@@ -60,7 +76,7 @@ describe('Orchestrator', function () {
   });
 
   it('Should register a module', function () {
-    const o = new Orchestrator();
+    // const o = new Orchestrator();
 
     return o.init().then(() => {
       const name = 'test-processor';
@@ -75,7 +91,7 @@ describe('Orchestrator', function () {
   });
 
   it('Should unregister a module', function () {
-    const o = new Orchestrator();
+    // const o = new Orchestrator();
 
     return o.init().then(() => {
       const name = 'test-processor';
@@ -94,7 +110,7 @@ describe('Orchestrator', function () {
   });
 
   it('Should find a module by negativePath', function () {
-    const o = new Orchestrator();
+    // const o = new Orchestrator();
 
     return o.init().then(() => {
       const originalModule = new Module({ service: serviceName });
@@ -113,7 +129,7 @@ describe('Orchestrator', function () {
   });
 
   it('Should NOT find a module by negativePath', function () {
-    const o = new Orchestrator();
+    // const o = new Orchestrator();
 
     return o.init().then(() => {
       const originalModule = new Module({ service: serviceName });
@@ -130,7 +146,7 @@ describe('Orchestrator', function () {
   });
 
   it('Should find a module by positivePath', function () {
-    const o = new Orchestrator();
+    // const o = new Orchestrator();
 
     return o.init().then(() => {
       const originalModule = new Module({ service: serviceName });
@@ -149,7 +165,7 @@ describe('Orchestrator', function () {
   });
 
   it('Should NOT find a module by positivePath', function () {
-    const o = new Orchestrator();
+    // const o = new Orchestrator();
 
     return o.init().then(() => {
       const originalModule = new Module({ service: serviceName });
@@ -163,5 +179,77 @@ describe('Orchestrator', function () {
         chai.expect(modules).to.be.empty();
       });
     });
+  });
+
+  it('Should listen with default options', function () {
+    // const o = new Orchestrator();
+
+    return o.init().then(() => {
+      return o.listen();
+    });
+  });
+
+  it('Should handle new modules registration by queue', function () {
+    // const o = new Orchestrator();
+
+    return o.init().then(() => {
+      return o.listen();
+    }).then(() => {
+      const m = new Module({ service: dockerNames.getRandomName(false) });
+
+      return o.onNewModule(m).then(() => {
+        chai.expect(o.isRegistered(m)).to.be.true();
+      });
+    });
+  });
+
+  it('Should reject when bad modules are passed', function () {
+    // const o = new Orchestrator();
+
+    return o.init().then(() => {
+      return o.listen();
+    }).then(() => {
+      const m = { invalid_module: 'invalid' };
+
+      return o.onNewModule(m)
+        .catch((err) => {
+          chai.expect(err).to.be.not.null();
+        });
+    });
+  });
+
+  it('Should shutdown gracefully', function () {
+    // const o = new Orchestrator();
+
+    return o.init()
+      .then(() => {
+        return o.listen();
+      }).then(() => {
+        return o.shutdown();
+      });
+  });
+
+  it('Should handle module registration on it\'s queue', function () {
+    // const o = new Orchestrator();
+
+    return o.init()
+      .then(() => {
+        return o.listen();
+      })
+      .then(() => {
+        const m = new Module({ service: dockerNames.getRandomName(false), registerQueue: o.registerQueue });
+
+        return m.register().then(() => {
+          return new Promise((resolve) => {
+            setInterval(() => {
+              process.nextTick(() => {
+                if (o.isRegistered(m)) {
+                  resolve();
+                }
+              });
+            }, 50);
+          });
+        });
+      });
   });
 });

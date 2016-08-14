@@ -1,5 +1,8 @@
 import elasticsearch from 'elasticsearch';
 import isProd from 'isprod';
+import Promise from 'bluebird';
+
+const defaultOptions = { log: isProd ? 'warn' : 'info' };
 
 /**
  * Creates an elastic connection
@@ -7,12 +10,9 @@ import isProd from 'isprod';
  * @return Promise that resolves to the client
  */
 
-const defaultOptions = { log: isProd ? 'info' : 'debug' };
-
-
-export default (options) => {
+export const connect = (options) => {
   return new Promise((resolve, reject) => {
-    options = options || defaultOptions;
+    options = options || Object.assign({}, defaultOptions);
     const client = new elasticsearch.Client(options);
 
     client.ping().then(() => {

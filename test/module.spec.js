@@ -7,16 +7,19 @@ import dockerNames from 'docker-names';
 // =============================================================================
 chai.use(dirtyChai);
 
-it('Should fail when registering a module without service', function () {
+describe('Module', function () {
+  it('Should fail when registering a module without service', function () {
 
-  return new Promise((resolve, reject) => {
-    try {
-      const m = new Module();
+    return new Promise((resolve, reject) => {
+      try {
+        const m = new Module();
 
-      m.name = dockerNames.getRandomName(false); // eslint complains!
-      reject();
-    } catch (err) {
-      resolve();
-    }
+        m.name = dockerNames.getRandomName(false); // eslint complains!
+        reject();
+      } catch (err) {
+        resolve();
+      }
+    });
   });
+
 });

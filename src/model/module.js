@@ -1,6 +1,9 @@
 import uuid from 'node-uuid';
 import names from 'docker-names';
 import assert from 'assert';
+import * as mq from '../mq/connection';
+import Promise from 'bluebird';
+
 
 /**
  * Module class that represents a module that is connected directly to the Orchestrator.
@@ -23,6 +26,24 @@ class Module {
     this.positivePath = moduleFrom.positivePath;
     this.negativePath = moduleFrom.negativePath;
     this.order = moduleFrom.order || -1;
+    this.registerQueue = moduleFrom.registerQueue || 'o_register';
+    this.amqpURL = moduleFrom.amqpURL || 'amqp://localhost:5672';
+  }
+
+  register() {
+    return mq.connect(this.amqpURL)
+      .then((context) => {
+        return context.socket('REQ');
+      })
+      .then((req) => {
+        return new Promise((resolve) => {
+          req.connect(this.registerQueue, () => {
+            const resp = req.write(JSON.stringify(this));
+
+            resolve(resp);
+          });
+        });
+      });
   }
 }
 

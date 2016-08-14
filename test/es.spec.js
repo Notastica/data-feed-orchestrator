@@ -2,15 +2,16 @@
  * Common test Dependencies
  */
 // import {assert, should, expect} from "chai";
-import es from '../src/es/connection';
+import * as es from '../src/es/connection';
 
 /**
  * Test dependencies
  */
 
 describe('Elasticsearch', function () {
+
   it('Should reject when connection fails', function (done) {
-    es({
+    es.connect({
       host: 'http://localhost:555',
       pingTimeout: 500,
       maxRetries: 1,
@@ -23,7 +24,7 @@ describe('Elasticsearch', function () {
   });
 
   it('Should resolve to a valid client', function () {
-    return es({
+    return es.connect({
       pingTimeout: 500,
       maxRetries: 1,
       log: null

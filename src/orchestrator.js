@@ -7,43 +7,43 @@ import * as mq from './mq/connection';
 import * as es from './es/connection';
 import * as symbols from './utils/symbols';
 import Promise from 'bluebird';
+import _ from 'lodash/core';
 
 class Orchestrator {
-  constructor() {
-    this.dbPath = 'orchestrator.js';
-    this.name = dockerNames.getRandomName(false);
-    this.db = null;
-    this.modulesCollection = null;
-    this.initialized = false;
-    this.running = false;
-    this.order = 0;
-    this.registerQueue = null;
-  }
 
   /**
    * Initialise the Orchestrator
    * @param {Object} [options]
    * @return {Promise}
    */
-  init(options) {
-    return new Promise((resolve) => {
-      if (this.initialized) {
-        resolve();
-      }
-      options = options || {};
-      logger.info('Initializing Orchestrator with options', options);
-      this.name = options.name || this.name;
-      this.dbPath = options.dbPath || this.dbPath;
-      this.db = new Loki(this.dbName);
-      this.modulesCollection = this.db.addCollection('modules');
-      logger.debug('Database initialized with name', this.dbPath);
-      this.registerQueue = options.registerQueue || 'o_register';
-      this.amqpContext = null;
-      this.amqpURL = options.amqpURL || 'amqp://localhost:5672';
-      this.esClient = null;
-      this.initialized = true;
-      resolve(this.initialized);
-    });
+
+  constructor(options) {
+    const defaults = {
+      dbPath: 'orchestrator.js',
+      name: dockerNames.getRandomName(false),
+      modulesCollectionName: 'modules',
+      registerQueue: 'o_register',
+      messagesQueue: 'o_messages',
+      amqpURL: 'amqp://localhost:5672'
+    };
+
+    options = _.defaults(options || {}, defaults);
+    logger.info('Initializing Orchestrator with options', options);
+
+    this.dbPath = options.dbPath;
+    this.name = options.name;
+    this.running = false;
+    this.order = 0;
+
+    this.messagesQueue = options.messagesQueue;
+    this.name = options.name || this.name;
+    this.dbPath = options.dbPath || this.dbPath;
+    this.db = new Loki(this.dbName);
+    this.modulesCollection = this.db.addCollection(options.modulesCollectionName);
+    this.registerQueue = options.registerQueue;
+    this.amqpURL = options.amqpURL;
+    this.amqpContext = null;
+    this.esClient = null;
   }
 
 
@@ -94,6 +94,7 @@ class Orchestrator {
       }
       logger.info(`[${symbols.check}] Elasticsearch disconnected`);
       this.running = false;
+      this.modulesCollection.clear();
     }
   }
 
@@ -119,20 +120,6 @@ class Orchestrator {
     });
   }
 
-  /**
-   * Check the Orchestrator is initialized
-   * @return {Promise}
-   */
-  checkInit() {
-    return new Promise((resolve, reject) => {
-      if (!this.initialized) {
-        logger.warn('Orchestrator not initialized');
-        reject('Orchestrator not initialized');
-      }
-      resolve(this.initialized);
-    });
-
-  }
 
   /**
    * Check if the module is of type {Module} if not convert to it
@@ -152,7 +139,7 @@ class Orchestrator {
    */
   unregister(module) {
 
-    return this.checkInit()
+    return Promise.resolve()
       .then(() => {
         module = Orchestrator.checkModule(module);
         const previousModule = this.modulesCollection.find({ uuid: module.uuid });
@@ -182,7 +169,7 @@ class Orchestrator {
    * @return {*|Promise}
    */
   register(module) {
-    return this.checkInit().then(() => {
+    return Promise.resolve().then(() => {
       module = Orchestrator.checkModule(module);
       logger.info('Registering new module', module);
 

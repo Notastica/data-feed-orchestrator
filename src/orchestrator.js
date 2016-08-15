@@ -1,6 +1,6 @@
 import Loki from 'lokijs';
 import logger from './logging/logger';
-import Module from './model/module';
+import Module from './module';
 import jsonpath from 'jsonpath';
 import dockerNames from 'docker-names';
 import * as mq from './mq/connection';

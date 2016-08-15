@@ -1,9 +1,9 @@
 import uuid from 'node-uuid';
 import names from 'docker-names';
 import assert from 'assert';
-import * as mq from '../mq/connection';
+import * as mq from './mq/connection';
 import Promise from 'bluebird';
-import logger from '../logging/logger';
+import logger from './logging/logger';
 import _ from 'lodash';
 import EventEmitter from 'events';
 

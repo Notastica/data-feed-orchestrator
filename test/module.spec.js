@@ -1,6 +1,6 @@
 import * as chai from 'chai';
 import dirtyChai from 'dirty-chai';
-import Module from '../src/model/module';
+import Module from '../src/module';
 import dockerNames from 'docker-names';
 
 // TEST SETUP

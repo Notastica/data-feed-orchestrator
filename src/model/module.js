@@ -3,7 +3,8 @@ import names from 'docker-names';
 import assert from 'assert';
 import * as mq from '../mq/connection';
 import Promise from 'bluebird';
-
+import logger from '../logging/logger';
+import _ from 'lodash';
 
 /**
  * Module class that represents a module that is connected directly to the Orchestrator.
@@ -38,9 +39,17 @@ class Module {
       .then((req) => {
         return new Promise((resolve) => {
           req.connect(this.registerQueue, () => {
-            const resp = req.write(JSON.stringify(this));
+            req.write(JSON.stringify(this));
+            req.pipe(process.stdout);
+            req.on('data', (res) => {
+              const m = JSON.parse(res);
 
-            resolve(resp);
+              logger.debug('Got a response back from the orchestrator', m);
+              if (m.uuid === this.uuid) {
+                _.assign(this, m);
+                resolve(m);
+              }
+            });
           });
         });
       });

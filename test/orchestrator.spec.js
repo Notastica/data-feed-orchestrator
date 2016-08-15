@@ -8,7 +8,6 @@ import Orchestrator from '../src/orchestrator';
 import uuid from 'node-uuid';
 import Module from '../src/model/module';
 import dockerNames from 'docker-names';
-import Promise from 'bluebird';
 
 
 // TEST SETUP
@@ -218,16 +217,9 @@ describe('Orchestrator', function () {
       .then(() => {
         const m = new Module({ service: dockerNames.getRandomName(false), registerQueue: o.registerQueue });
 
-        return m.register().then(() => {
-          return new Promise((resolve) => {
-            setInterval(() => {
-              process.nextTick(() => {
-                if (o.isRegistered(m)) {
-                  resolve();
-                }
-              });
-            }, 50);
-          });
+        return m.register().then((module) => {
+          chai.expect(module.uuid).to.be.equals(m.uuid);
+          chai.expect(o.isRegistered(module)).to.be.true();
         });
       });
   });

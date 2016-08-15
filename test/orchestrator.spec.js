@@ -6,7 +6,7 @@ import * as chai from 'chai';
 import dirtyChai from 'dirty-chai';
 import Orchestrator from '../src/orchestrator';
 import uuid from 'node-uuid';
-import Module from '../src/model/module';
+import Module from '../src/module';
 import dockerNames from 'docker-names';
 
 

@@ -10,6 +10,14 @@ import Promise from 'bluebird';
 import _ from 'lodash/core';
 import uuid from 'node-uuid';
 
+/**
+ * The Orchestrator is the class that manages all modules
+ * - manages connections and queue
+ * - manages elasticsearch as persistence
+ * - it manages things
+ * - it is smart
+ * @class
+ */
 class Orchestrator {
 
   /**
@@ -87,6 +95,9 @@ class Orchestrator {
 
   }
 
+  /**
+   * Shutdown this Orchestrator, disconnection from MQ and ES and freeing resources
+   */
   shutdown() {
     if (this.running) {
       if (this.amqpContext) {
@@ -232,6 +243,11 @@ class Orchestrator {
     return jsonpath.query(obj, path).length > 0;
   }
 
+  /**
+   * Generates a random (with pattern) queue name to be used by modules
+   * @param {Module} module
+   * @return {string}
+   */
   static generateModuleQueueName(module) {
     return `${module.service}-${module.order}-${uuid.v4()}`;
   }

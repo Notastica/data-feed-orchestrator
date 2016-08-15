@@ -8,6 +8,7 @@ import * as es from './es/connection';
 import * as symbols from './utils/symbols';
 import Promise from 'bluebird';
 import _ from 'lodash/core';
+import uuid from 'node-uuid';
 
 class Orchestrator {
 
@@ -67,7 +68,7 @@ class Orchestrator {
           logger.debug('Received new module registration');
           return this.onNewModule(message).then((m) => {
             logger.debug('Module registered, writing back response');
-            reply.write(JSON.stringify(m));
+            reply.write(m.toJSON());
             logger.debug('Response written');
             return m;
           });
@@ -184,7 +185,8 @@ class Orchestrator {
             return this.register(module);
           });
       }
-      module.order = this.order++;
+      module.order = ++this.order;
+      module.workerQueueName = Orchestrator.generateModuleQueueName(module);
       return this.modulesCollection.insert(module);
     });
   }
@@ -228,6 +230,10 @@ class Orchestrator {
   static
   matchesPath(obj, path) {
     return jsonpath.query(obj, path).length > 0;
+  }
+
+  static generateModuleQueueName(module) {
+    return `${module.service}-${module.order}-${uuid.v4()}`;
   }
 
 }

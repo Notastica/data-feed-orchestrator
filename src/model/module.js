@@ -5,12 +5,13 @@ import * as mq from '../mq/connection';
 import Promise from 'bluebird';
 import logger from '../logging/logger';
 import _ from 'lodash';
+import EventEmitter from 'events';
 
 /**
  * Module class that represents a module that is connected directly to the Orchestrator.
- *
+ * @class
  */
-class Module {
+class Module extends EventEmitter {
 
   /**
    * Constructor for module, several options are expected.
@@ -19,6 +20,7 @@ class Module {
    */
 
   constructor(moduleFrom) {
+    super();
     moduleFrom = moduleFrom || {};
     // Simple properties that should be added to JSON
     // ---------------------------------------------
@@ -41,6 +43,10 @@ class Module {
     // ---------------------------------------------
   }
 
+  /**
+   * Generates a JSON that represents this object
+   * @return {Object} a JSON representation of this object
+   */
   toJSON() {
     return JSON.stringify({
       service: this.service,
@@ -55,6 +61,17 @@ class Module {
     });
   }
 
+  /**
+   * Tries to register this module into the Orchestrator
+   * The following steps are executed:
+   *  - Connect to the MQ
+   *  - Create a REQUEST socket to send the registration to the Orchestrator
+   *  - Send itself to the retistration queue
+   *  - Wait for an answer in the reply queue (automagically generated)
+   *  - Grabs the response, apply the new values to itself from response
+   *  - resolve the promise with itself updated
+   * @return {Promise.<Module>}
+   */
   register() {
     const _this = this;
 
@@ -83,20 +100,32 @@ class Module {
       });
   }
 
+  /**
+   * Start listening on {Module.WokerQueueName} (defined in registration)
+   * for new jobs to process
+   */
   listen() {
     this.workerSocket = this.amqpContext.socket('WORKER');
     this.workerSocket.connect(this.workerQueueName);
+    const _this = this;
+
     this.workerSocket.on('data', (message) => {
-      this.handleMessage(message);
+      logger.debug('New message received', message);
+      try {
+        message = JSON.parse(message.toString());
+      } catch (err) {
+        logger.debug('Could not convert message to JSON, sending raw value');
+        message = message.toString();
+      }
+      _this.emit('data', message);
     });
   }
 
-  handleMessage(message) {
-    logger.warn('Default #handleMessage triggered, your module should overwrite this method.', message.toString());
-    logger.warn('Calling ACK and automatically dismissing message');
-    this.sendAck();
-  }
-
+  /**
+   * Send an acknowledge message back to the orchestrator, this ack the last received job
+   * and should be called for every message handled inside #handleMessage
+   * @see handleMessage
+   */
   sendAck() {
     logger.debug('Sending ACK for last received message');
     this.workerSocket.ack();

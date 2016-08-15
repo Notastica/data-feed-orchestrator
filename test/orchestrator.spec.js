@@ -16,12 +16,15 @@ chai.use(dirtyChai);
 
 let o;
 
-
 describe('Orchestrator', function () {
 
   before(function () {
-    o = new Orchestrator();
-    return o.listen();
+
+    o = new Orchestrator({
+      registerQueue: `register-${uuid.v4()}`,
+      messagesQueue: `messages-${uuid.v4()}`,
+      messagesIndex: `index-${uuid.v4()}`
+    });
   });
 
   after(function () {
@@ -120,7 +123,7 @@ describe('Orchestrator', function () {
     // const o = new Orchestrator();
 
     return o.listen().then(() => {
-      const originalModule = new Module({ service: serviceName });
+      const originalModule = new Module({ service: serviceName, registerQueue: o.registerQueue });
 
       originalModule.negativePath = '$.key';
 
@@ -175,18 +178,6 @@ describe('Orchestrator', function () {
     return o.listen();
   });
 
-  // it('Should handle new modules registration by queue', function () {
-  //   // const o = new Orchestrator();
-  //
-  //   return o.listen().then(() => {
-  //     const m = new Module({ service: dockerNames.getRandomName(false) });
-  //
-  //     return o.onNewModule(m).then(() => {
-  //       chai.expect(o.isRegistered(m)).to.be.true();
-  //     });
-  //   });
-  // });
-
   it('Should reject when bad modules are passed', function () {
     // const o = new Orchestrator();
 
@@ -204,8 +195,8 @@ describe('Orchestrator', function () {
   it('Should increase the order', function () {
     return o.listen()
       .then(() => {
-        const m1 = new Module({ service: dockerNames.getRandomName(false) });
-        const m2 = new Module({ service: dockerNames.getRandomName(false) });
+        const m1 = new Module({ service: dockerNames.getRandomName(false), registerQueue: o.registerQueue });
+        const m2 = new Module({ service: dockerNames.getRandomName(false), registerQueue: o.registerQueue });
 
         return m1.register().then(() => {
           return m2.register();

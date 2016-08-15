@@ -23,9 +23,7 @@ class Orchestrator {
   /**
    * Initialise the Orchestrator
    * @param {Object} [options]
-   * @return {Promise}
    */
-
   constructor(options) {
     const defaults = {
       dbPath: 'orchestrator.js',
@@ -33,26 +31,99 @@ class Orchestrator {
       modulesCollectionName: 'modules',
       registerQueue: 'o_register',
       messagesQueue: 'o_messages',
-      amqpURL: 'amqp://localhost:5672'
+      amqpURL: 'amqp://localhost:5672',
+      messagesIndex: 'messages',
+      messagesType: 'mType'
     };
 
     options = _.defaults(options || {}, defaults);
     logger.info('Initializing Orchestrator with options', options);
 
+    /**
+     * The name/path of the lokijs in memory database
+     * @type {any}
+     */
     this.dbPath = options.dbPath;
-    this.name = options.name;
-    this.running = false;
-    this.order = 0;
 
+    /**
+     * The name of this Orchestrator
+     * @type {String}
+     */
+    this.name = options.name;
+
+    /**
+     * Whether this orchestrator is currently _running or not;
+     * @type {boolean}
+     * @private
+     */
+    this._running = false;
+
+    /**
+     * Last module order, this is used to order modules when querying them
+     * @type {number}
+     * @private
+     */
+    this._order = 0;
+
+    /**
+     * The name of the queue in which new messages will arrive
+     * @type {string}
+     */
     this.messagesQueue = options.messagesQueue;
-    this.name = options.name || this.name;
-    this.dbPath = options.dbPath || this.dbPath;
-    this.db = new Loki(this.dbName);
-    this.modulesCollection = this.db.addCollection(options.modulesCollectionName);
+
+    /**
+     * The lokijs database;
+     * @type {Loki}
+     * @private
+     */
+    this._db = new Loki(this.dbPath);
+
+    /**
+     * The modules collection
+     * @type {Collection}
+     */
+    this.modulesCollection = this._db.addCollection(options.modulesCollectionName);
+
+    /**
+     * The name of the queue in which registrations will be received
+     * @type {string}
+     */
     this.registerQueue = options.registerQueue;
+
+    /**
+     * The AMQP connection url, eg: amqp://localhost:5672
+     * @type {string}
+     */
     this.amqpURL = options.amqpURL;
+
+    /**
+     * The amqp context (connection) that this Orchestrator is running
+     * @see listen
+     * @type {Context}
+     */
     this.amqpContext = null;
+
+    /**
+     * The elasticsearch connection that this Orchestrator is connected
+     * @see listen
+     * @type {elasticsearch}
+     */
     this.esClient = null;
+
+    /**
+     * The index in which messages will be stored in the elasticsearch
+     * @type {string}
+     * @see _storeMessage
+     */
+    this.messagesIndex = options.messagesIndex;
+
+    /**
+     * The type in which messages will be stored under the index in elasticsearch
+     * @see messagesIndex
+     * @see _storeMessage
+     * @type {string}
+     */
+    this.messagesType = options.messagesType;
   }
 
 
@@ -61,7 +132,7 @@ class Orchestrator {
    * @return {Promise}
    */
   listen() {
-    if (this.running) {
+    if (this._running) {
       return Promise.resolve(this);
     }
     return mq.connect(this.amqpURL)
@@ -70,36 +141,80 @@ class Orchestrator {
         this.amqpContext = context;
         return context.socket('REPLY');
       })
-      .then((reply) => {
-        reply.connect(this.registerQueue);
-        reply.on('data', (message) => {
-          logger.debug('Received new module registration');
-          return this.onNewModule(message).then((m) => {
-            logger.debug('Module registered, writing back response');
-            reply.write(m.toJSON());
-            logger.debug('Response written');
-            return m;
-          });
-        });
-        logger.info(`[${symbols.check}] AMQP connected, waiting for new modules`);
-      })
+      .then(this._connectToRegistrationQueue)
+      .then(() => {
+        return this.amqpContext.socket('WORKER');
+      }).then(this._connectToMessagesQueue)
       .then(() => {
         return es.connect();
       })
       .then((esClient) => {
         this.esClient = esClient;
         logger.info(`[${symbols.check}] ElasticSearch connected`);
-        this.running = true;
-        return this;
+        this._running = true;
+      }).then(() => {
+        return this.esClient.indices.exists({ index: this.messagesIndex })
+          .then(() => {
+            logger.debug(`[${symbols.check}] ElasticSearch already exists [${this.messagesIndex}]`);
+            return this;
+          }).catch(() => {
+            return this.esClient.indices.create({ index: this.messagesIndex })
+              .then(() => {
+                logger.debug(`[${symbols.check}] ElasticSearch index created [${this.messagesIndex}]`);
+              });
+          });
+
       });
 
+  }
+
+  /**
+   * Connects to the message queue and wait for new messages to arrive
+   * @param {WorkerSocket} workerSocket
+   * @private
+   * @return {WorkerSocket}
+   */
+  _connectToMessagesQueue(workerSocket) {
+    logger.debug('Connecting to messages queue', this.messagesQueue);
+    workerSocket.connect(this.messagesQueue);
+    const _this = this;
+
+    workerSocket.on('data', (message) => {
+      _this._onMessage(message)
+        .then(() => {
+          workerSocket.ack();
+        });
+    });
+    return workerSocket;
+  }
+
+  /**
+   * Connects to the registration queue and wait for new modules
+   *
+   * @param {RepSocket} replySocket
+   * @return {RepSocket}
+   * @private
+   */
+  _connectToRegistrationQueue(replySocket) {
+    replySocket.connect(this.registerQueue);
+    replySocket.on('data', (message) => {
+      logger.debug('Received new module registration');
+      return this.onNewModule(message).then((m) => {
+        logger.debug('Module registered, writing back response', m);
+        replySocket.write(m.toJSON());
+        logger.debug('Response written');
+        return m;
+      });
+    });
+    logger.info(`[${symbols.check}] AMQP connected, waiting for new modules`);
+    return replySocket;
   }
 
   /**
    * Shutdown this Orchestrator, disconnection from MQ and ES and freeing resources
    */
   shutdown() {
-    if (this.running) {
+    if (this._running) {
       if (this.amqpContext) {
         this.amqpContext.close();
       }
@@ -108,7 +223,7 @@ class Orchestrator {
         this.esClient.close();
       }
       logger.info(`[${symbols.check}] Elasticsearch disconnected`);
-      this.running = false;
+      this._running = false;
       this.modulesCollection.clear();
     }
   }
@@ -121,7 +236,7 @@ class Orchestrator {
   onNewModule(message) {
     return new Promise((resolve, reject) => {
       try {
-        message = typeof message === 'string' || Buffer.isBuffer(message) ? JSON.parse(message) : message;
+        message = typeof message === 'string' || Buffer.isBuffer(message) ? JSON.parse(message.toString()) : message;
         logger.debug(`Received new message on the module register queue ${message}`, message);
         const module = new Module(message);
 
@@ -135,17 +250,69 @@ class Orchestrator {
     });
   }
 
+  /**
+   * Handles new messages arrived, dispatching to first matching worker it can find
+   * @param {any} originalMessage
+   * @private
+   * @return {Promise} that resolves if handling of the message is OK
+   */
+  _onMessage(originalMessage) {
+    return this._storeMessage(originalMessage).then((storedMessage) => {
+      try {
+        storedMessage = JSON.parse(storedMessage.toString());
+        this.findMatchingModules(storedMessage).then((modules) => {
+          if (_.isEmpty(modules)) {
+            logger.info('Finished pipeline for message, storing and not redirecting to any module');
+            this._storeMessage(storedMessage);
+          } else {
+            const module = modules[0];
+
+            logger.info('Redirecting message to module', module.service, module.name);
+            logger.info('Sending message to queue', module.workerQueueName);
+            const pushSocket = this.amqpContext.socket('PUSH');
+
+            pushSocket.connect(module.workerQueueName);
+            pushSocket.write(storedMessage);
+          }
+        });
+      } catch (err) {
+        logger.err('Could not convert message to JSON', storedMessage.toString());
+        logger.err('Message will be discarded');
+      }
+    });
+
+  }
 
   /**
-   * Check if the module is of type {Module} if not convert to it
-   *
-   * @param {*|Module} module
-   * @return {Module}
+   * Stores the arrived message into the elasticsearch
+   * and return a Promise that resolves to the stored message
+   * @param {Object} message
+   * @private
+   * @return {Promise}
    */
-  static
-  checkModule(module) {
-    return typeof module === Module ? module : new Module(module);
+  _storeMessage(message) {
+    const _this = this;
+
+    if (!message.uuid) {
+      message.uuid = uuid.v4();
+    }
+    return new Promise((resolve, reject) => {
+      _this.esClient.index({
+        index: _this.messagesIndex,
+        type: _this.messagesType,
+        body: message,
+        id: message.uuid
+      }, function (err, response) {
+        if (err) {
+          reject(err);
+        } else {
+          logger.debug('Message stored in elasticsearch under id', response._id);
+          resolve(message);
+        }
+      });
+    });
   }
+
 
   /**
    * Unregister a module in the Orchestrator
@@ -184,20 +351,22 @@ class Orchestrator {
    * @return {*|Promise}
    */
   register(module) {
+    const _this = this; // or mocha tests fails sometimes
+
     return Promise.resolve().then(() => {
       module = Orchestrator.checkModule(module);
       logger.info('Registering new module', module);
 
-      if (this.isRegistered(module)) {
+      if (_this.isRegistered(module)) {
         logger.info(`Module ${module.name} already registered for uuir ${module.uuid}`);
         logger.info('Unregistering previously registered module, to register the new one');
-        return this.unregister(this.modulesCollection.find({ uuid: module.uuid })[0])
+        return _this.unregister(this.modulesCollection.find({ uuid: module.uuid })[0])
           .then(() => {
-            return this.register(module);
+            return _this.register(module);
           });
       }
-      module.order = ++this.order;
-      module.workerQueueName = Orchestrator.generateModuleQueueName(module);
+      module.order = ++_this._order;
+      module.workerQueueName = _this.generateModuleQueueName(module);
       return this.modulesCollection.insert(module);
     });
   }
@@ -205,7 +374,7 @@ class Orchestrator {
 
   /**
    * Find modules that matches for the give message
-   * ordered by their registration order
+   * ordered by their registration _order
    * @param {Object} message
    * @return {Promise}
    */
@@ -233,6 +402,22 @@ class Orchestrator {
   }
 
   /**
+   * Generates a random (with pattern) queue name to be used by modules
+   * NOTE: if a module is already registered for the same service, the previously generated queue is returned.
+   * This way all modules for the same service will be listening to the same queue
+   * @param {Module} module
+   * @return {string}
+   */
+  generateModuleQueueName(module) {
+    const serviceModules = this.modulesCollection.find({ service: module.service });
+
+    if (!_.isEmpty(serviceModules)) {
+      return serviceModules[0].workerQueueName;
+    }
+    return `${module.service}-${module.order}-${uuid.v4()}`;
+  }
+
+  /**
    * Checks if the given object matches a jsonpath
    * @param {*} obj
    * @param {Path} path
@@ -244,12 +429,14 @@ class Orchestrator {
   }
 
   /**
-   * Generates a random (with pattern) queue name to be used by modules
-   * @param {Module} module
-   * @return {string}
+   * Check if the module is of type {Module} if not convert to it
+   *
+   * @param {*|Module} module
+   * @return {Module}
    */
-  static generateModuleQueueName(module) {
-    return `${module.service}-${module.order}-${uuid.v4()}`;
+  static
+  checkModule(module) {
+    return typeof module === Module ? module : new Module(module);
   }
 
 }

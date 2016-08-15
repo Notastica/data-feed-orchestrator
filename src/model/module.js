@@ -16,23 +16,38 @@ class Module extends EventEmitter {
   /**
    * Constructor for module, several options are expected.
    * //TODO document all options
-   * @param {*} moduleFrom
+   * @param {Object|string} options
    */
 
-  constructor(moduleFrom) {
+  constructor(options) {
     super();
-    moduleFrom = moduleFrom || {};
+    options = options || options;
+    if (typeof options === 'string') {
+      options = { service: options };
+    }
+    options = options || options;
+    const defaults = {
+      uuid: uuid.v4(),
+      name: names.getRandomName(false),
+      order: -1,
+      registerQueue: 'o_register',
+      amqpURL: 'amqp://localhost:5672'
+    };
+
+    options = _.defaults(options, defaults);
+    logger.debug('Initializing module with options:', JSON.stringify(options));
+
     // Simple properties that should be added to JSON
     // ---------------------------------------------
-    this.service = moduleFrom.service;
+    this.service = options.service;
     assert.ok(this.service, 'We need a service to know your module');
-    this.uuid = moduleFrom.uuid || uuid.v4();
-    this.name = moduleFrom.name || names.getRandomName(false);
-    this.positivePath = moduleFrom.positivePath;
-    this.negativePath = moduleFrom.negativePath;
-    this.order = moduleFrom.order || -1;
-    this.registerQueue = moduleFrom.registerQueue || 'o_register';
-    this.amqpURL = moduleFrom.amqpURL || 'amqp://localhost:5672';
+    this.uuid = options.uuid;
+    this.name = options.name;
+    this.positivePath = options.positivePath;
+    this.negativePath = options.negativePath;
+    this.order = options.order;
+    this.registerQueue = options.registerQueue;
+    this.amqpURL = options.amqpURL;
     // ---------------------------------------------
 
     // Complex properties (Objects, classes, etc)
@@ -92,7 +107,7 @@ class Module extends EventEmitter {
               if (m.uuid === _this.uuid) {
                 _.assign(_this, m);
                 _this.listen();
-                resolve(m);
+                resolve(_this);
               }
             });
           });

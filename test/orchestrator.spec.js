@@ -201,6 +201,21 @@ describe('Orchestrator', function () {
       });
   });
 
+  it('Should increase the order', function () {
+    return o.listen()
+      .then(() => {
+        const m1 = new Module({ service: dockerNames.getRandomName(false) });
+        const m2 = new Module({ service: dockerNames.getRandomName(false) });
+
+        return m1.register().then(() => {
+          return m2.register();
+        }).then(() => {
+          return chai.expect(m1.order).to.be.below(m2.order);
+
+        });
+      });
+  });
+
   it('Should shutdown gracefully', function () {
     // const o = new Orchestrator();
 

@@ -64,8 +64,11 @@ class Orchestrator {
       .then((reply) => {
         reply.connect(this.registerQueue);
         reply.on('data', (message) => {
+          logger.debug('Received new module registration');
           return this.onNewModule(message).then((m) => {
+            logger.debug('Module registered, writing back response');
             reply.write(JSON.stringify(m));
+            logger.debug('Response written');
             return m;
           });
         });

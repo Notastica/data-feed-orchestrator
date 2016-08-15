@@ -52,7 +52,7 @@ describe('Orchestrator Integration', function () {
                 resolve(response.count);
               }
             });
-          }, 500);
+          }, 1000);
         });
       });
   });

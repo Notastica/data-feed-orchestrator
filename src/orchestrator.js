@@ -9,6 +9,7 @@ import * as symbols from './utils/symbols';
 import Promise from 'bluebird';
 import _ from 'lodash/core';
 import uuid from 'node-uuid';
+import * as temp from 'temp';
 
 /**
  * The Orchestrator is the class that manages all modules
@@ -26,7 +27,7 @@ class Orchestrator {
    */
   constructor(options) {
     const defaults = {
-      dbPath: 'orchestrator.js',
+      dbPath: temp.path(),
       name: dockerNames.getRandomName(false),
       modulesCollectionName: 'modules',
       registerQueue: 'o_register',
@@ -76,13 +77,19 @@ class Orchestrator {
      * @type {Loki}
      * @private
      */
-    this._db = new Loki(this.dbPath);
+    this._db = new Loki(this.dbPath, {
+      autoload: true, autosave: true, autoloadCallback: () => {
+        this._onRestoreDB();
+      }
+    });
+
+    this.modulesCollectionName = options.modulesCollectionName;
 
     /**
      * The modules collection
      * @type {Collection}
      */
-    this.modulesCollection = this._db.addCollection(options.modulesCollectionName);
+    this.modulesCollection = null;
 
     /**
      * The name of the queue in which registrations will be received
@@ -134,6 +141,14 @@ class Orchestrator {
   listen() {
     if (this._running) {
       return Promise.resolve(this);
+    }
+    if (!this.modulesCollection) {
+      return new Promise((resolve) => {
+        logger.debug('Database not initialized, waiting 100ms');
+        setTimeout(() => {
+          resolve(this.listen());
+        }, 100);
+      });
     }
     return mq.connect(this.amqpURL)
       .bind(this)
@@ -212,20 +227,28 @@ class Orchestrator {
 
   /**
    * Shutdown this Orchestrator, disconnection from MQ and ES and freeing resources
+   * @return {Promise}
    */
   shutdown() {
-    if (this._running) {
-      if (this.amqpContext) {
-        this.amqpContext.close();
+    return new Promise((resolve) => {
+      if (this._running) {
+        if (this.amqpContext) {
+          this.amqpContext.close();
+        }
+        logger.info(`[${symbols.check}] AMQP disconnected`);
+        if (this.esClient) {
+          this.esClient.close();
+        }
+        logger.info(`[${symbols.check}] Elasticsearch disconnected`);
+        this._running = false;
       }
-      logger.info(`[${symbols.check}] AMQP disconnected`);
-      if (this.esClient) {
-        this.esClient.close();
+      if (this._db) {
+        this._db.close(resolve);
+      } else {
+        resolve();
       }
-      logger.info(`[${symbols.check}] Elasticsearch disconnected`);
-      this._running = false;
-      this.modulesCollection.clear();
-    }
+    });
+
   }
 
   /**
@@ -438,6 +461,24 @@ class Orchestrator {
     return typeof module === Module ? module : new Module(module);
   }
 
+  /**
+   * Called when the database is ready
+   * @private
+   */
+  _onRestoreDB() {
+    this.modulesCollection = this._db.getCollection(this.modulesCollectionName);
+    if (!this.modulesCollection) {
+      this.modulesCollection = this._db.addCollection(this.modulesCollectionName);
+    } else {
+      this.modulesCollection.find().forEach((m) => {
+        if (typeof m === 'string') {
+          m = JSON.parse(m);
+        }
+        this.register(m);
+      });
+      logger.debug(`Database loaded with, ${this.modulesCollection.count()} modules`);
+    }
+  }
 }
 
 

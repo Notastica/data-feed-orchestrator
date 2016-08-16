@@ -25,7 +25,6 @@ class Module extends EventEmitter {
     if (typeof options === 'string') {
       options = { service: options };
     }
-    options = options || options;
     const defaults = {
       uuid: uuid.v4(),
       name: names.getRandomName(false),

@@ -21,7 +21,9 @@
     <img src="https://img.shields.io/travis/Notastica/data-feed-orchestrator.svg" alt="Travis Status">
   </a>
   
-
+  <a href="https://david-dm.org/Notastica/data-feed-orchestrator">
+    <img src="https://david-dm.org/Notastica/data-feed-orchestrator.svg" alt="Dependencies">
+  </a>
   
   <a href="https://coveralls.io/github/Notastica/data-feed-orchestrator">
     <img src="https://img.shields.io/coveralls/Notastica/data-feed-orchestrator.svg" alt="Coveralls">
@@ -35,9 +37,35 @@
 A data feed orchestrator
 </big></p>
 
+## Why?
 
-## Features
-// TODO
+  After some investigation, we could not find an easy to setup tool that would [https://en.wikipedia.org/wiki/Magic_(programming)](automagically) handle data _accelerators_ in a distributed system
+  where if one piece of the puzzle suddenly crashes or for some reason stop processing the whole puzzle manages and is capable of healing itself 
+
+## What it does?
+
+  The __Data Feed Orchestrator__ consists basically in 2 main pieces, an `Orchestrator` and __N__ `Modules`, all modules are connected to the `Orchestrator` who is responsible for handling new messages arrivals
+   and is able to decide to which module each new messages should be delivered in the next iteration.
+   After a message is handled by the module, it sends the message back to the orchestrator that decides what to do next.
+   
+## How?
+  
+  The `Orchestrator` is listening to 2 basic queues in an ampq (rabbitmq) server, _Messages queue_ and _Register Queue_.
+  
+  - __Register Queue__
+    - The register queue, is a queue that new modules should register themselvees, by sending a shallow copy of itself to the queue (Automagically done by the `Module#register()` method.
+  - __Messages Queue__
+    - The messages queue is the one that new messages will arrive, by an external process (or a module).
+  
+  Each modules register itself using the `Module#register()` method using the _Register queue_ and the Orchestrator answers back a queue to which the module will be listening to.
+  
+  __NOTE:__ Modules are grouped by the `Module.service` property, which means, all modules registered with the same `service` name will be listening to the same `queue`. 
+    This enables the capability that __N__ instances of the same module can be launched to process messages in parallel.
+    
+   
+   
+
+## Usage
 
 ## Install
 

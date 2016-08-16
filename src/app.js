@@ -17,7 +17,9 @@ mq.connect(o.amqpURL).then((context) => {
   pub.write(JSON.stringify(messageSent));
 
 })
-  .then(o.listen())
+  .then(() => {
+    return qo.listen();
+  })
   .then(() => {
     logger.info(`Orchestrator ${o.name} ready to receive new modules in the queue ${o.registerQueue}`);
   });

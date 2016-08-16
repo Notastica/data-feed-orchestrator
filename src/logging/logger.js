@@ -1,7 +1,7 @@
 import * as winston from 'winston';
 import isProd from 'isprod';
 
-const level = process.env.NODE_ENV === 'test' || !isProd ? 'debug' : 'info';
+const level = isProd ? 'info' : 'debug';
 
 export const logger = new winston.Logger({
   level: level,

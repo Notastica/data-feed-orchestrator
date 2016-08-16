@@ -2,7 +2,7 @@ import elasticsearch from 'elasticsearch';
 import isProd from 'isprod';
 import Promise from 'bluebird';
 
-const defaultOptions = { log: isProd ? 'warn' : 'info' };
+const defaultOptions = { log: isProd ? 'warning' : 'info' };
 
 /**
  * Creates an elastic connection

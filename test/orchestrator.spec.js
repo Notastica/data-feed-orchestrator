@@ -155,6 +155,26 @@ describe('Orchestrator', function () {
     });
   });
 
+  it('Should find a module by positivePath AND negativePath', function () {
+    // const o = new Orchestrator();
+
+    return o.listen().then(() => {
+      const originalModule = new Module({ service: serviceName });
+
+      originalModule.positivePath = '$.positiveKeyName';
+      originalModule.negativePath = '$.negativeKeyName';
+
+      return o.register(originalModule).then(() => {
+        return o.findMatchingModules({ positiveKeyName: 'value' });
+      }).then((modules) => {
+        chai.expect(modules).to.be.a('array');
+        chai.expect(modules[0])
+          .to.have.property('uuid')
+          .that.is.equals(originalModule.uuid);
+      });
+    });
+  });
+
   it('Should NOT find a module by positivePath', function () {
     // const o = new Orchestrator();
 

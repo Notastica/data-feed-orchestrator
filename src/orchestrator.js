@@ -180,7 +180,7 @@ class Orchestrator {
     const _this = this;
 
     workerSocket.on('data', (message) => {
-      _this._onMessage(message)
+      _this._onMessage(JSON.parse(message.toString()))
         .then(() => {
           workerSocket.ack();
         });
@@ -200,7 +200,7 @@ class Orchestrator {
     replySocket.on('data', (message) => {
       logger.debug('Received new module registration');
       return this.onNewModule(message).then((m) => {
-        logger.debug('Module registered, writing back response', m);
+        logger.debug('Module registered, writing back response', m.toJSON());
         replySocket.write(m.toJSON());
         logger.debug('Response written');
         return m;
@@ -257,30 +257,26 @@ class Orchestrator {
    * @return {Promise} that resolves if handling of the message is OK
    */
   _onMessage(originalMessage) {
-    return this._storeMessage(originalMessage).then((storedMessage) => {
-      try {
-        storedMessage = JSON.parse(storedMessage.toString());
-        this.findMatchingModules(storedMessage).then((modules) => {
-          if (_.isEmpty(modules)) {
-            logger.info('Finished pipeline for message, storing and not redirecting to any module');
-            this._storeMessage(storedMessage);
-          } else {
-            const module = modules[0];
+    return this._storeMessage(originalMessage)
+      .then((storedMessage) => {
+        return this.findMatchingModules(storedMessage)
+          .then((modules) => {
+            if (_.isEmpty(modules)) {
+              logger.info('Finished pipeline for message, storing and not redirecting to any module');
+              this._storeMessage(storedMessage);
+            } else {
+              const module = modules[0];
 
-            logger.info('Redirecting message to module', module.service, module.name);
-            logger.info('Sending message to queue', module.workerQueueName);
-            const pushSocket = this.amqpContext.socket('PUSH');
+              logger.info('Redirecting message to module', module.service, module.name);
+              logger.debug('Sending message to queue', storedMessage, module.workerQueueName);
+              const pushSocket = this.amqpContext.socket('PUSH');
 
-            pushSocket.connect(module.workerQueueName);
-            pushSocket.write(storedMessage);
-          }
-        });
-      } catch (err) {
-        logger.err('Could not convert message to JSON', storedMessage.toString());
-        logger.err('Message will be discarded');
-      }
-    });
-
+              pushSocket.connect(module.workerQueueName, () => {
+                pushSocket.write(JSON.stringify(storedMessage));
+              });
+            }
+          });
+      });
   }
 
   /**
@@ -366,6 +362,7 @@ class Orchestrator {
           });
       }
       module.order = ++_this._order;
+      module.messagesQueue = _this.messagesQueue;
       module.workerQueueName = _this.generateModuleQueueName(module);
       return this.modulesCollection.insert(module);
     });
@@ -382,16 +379,18 @@ class Orchestrator {
     return new Promise((resolve) => {
       logger.debug('Finding modules that matches', message);
       const modules = this.modulesCollection.where((module) => {
-        let matches = false;
+        let matchesPositive = true;
+        let matchesNegative = true;
+
 
         if (module.positivePath) {
-          matches = Orchestrator.matchesPath(message, module.positivePath);
+          matchesPositive = Orchestrator.matchesPath(message, module.positivePath);
         }
 
         if (module.negativePath) {
-          matches = !Orchestrator.matchesPath(message, module.negativePath);
+          matchesNegative = !Orchestrator.matchesPath(message, module.negativePath);
         }
-        return matches;
+        return matchesPositive && matchesNegative;
       });
 
       logger.debug('Found modules:', modules.length);

@@ -6,7 +6,7 @@ import * as chai from 'chai';
 import dirtyChai from 'dirty-chai';
 import Orchestrator from '../src/orchestrator';
 import uuid from 'node-uuid';
-
+import logger from '../src/logging/logger';
 
 // TEST SETUP
 // =============================================================================
@@ -16,7 +16,6 @@ describe('Orchestrator Integration', function () {
 
   it('Should store message on ES', function () {
 
-    this.timeout(10000); // eslint-disable-line no-invalid-this
 
     const o = new Orchestrator({
       registerQueue: `register-${uuid.v4()}`,
@@ -34,25 +33,24 @@ describe('Orchestrator Integration', function () {
         const pub = o.amqpContext.socket('PUSH');
         const message = { uuid: uuid.v4() };
 
-        pub.connect(o.messagesQueue);
-        setTimeout(() => {
+        pub.connect(o.messagesQueue, () => {
           pub.write(JSON.stringify(message));
-        }, 1000);
+        });
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
           const checkInterval = setInterval(() => {
             o.esClient.count({
               index: o.messagesIndex,
               ignoreUnavailable: true
             }, (err, response) => {
               if (err) {
-                reject(err);
+                logger.warn(`ElasticSearch is returning error ${err}`);
               } else if (response.count > 0) {
                 clearInterval(checkInterval);
                 resolve(response.count);
               }
             });
-          }, 1000);
+          }, 100);
         });
       });
   });

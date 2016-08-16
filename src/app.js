@@ -18,7 +18,7 @@ mq.connect(o.amqpURL).then((context) => {
 
 })
   .then(() => {
-    return qo.listen();
+    return o.listen();
   })
   .then(() => {
     logger.info(`Orchestrator ${o.name} ready to receive new modules in the queue ${o.registerQueue}`);

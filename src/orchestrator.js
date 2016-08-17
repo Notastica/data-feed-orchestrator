@@ -10,6 +10,7 @@ import Promise from 'bluebird';
 import _ from 'lodash/core';
 import uuid from 'node-uuid';
 import * as temp from 'temp';
+import JSON from 'json3';
 
 /**
  * The Orchestrator is the class that manages all modules
@@ -296,7 +297,7 @@ class Orchestrator {
               logger.info('Finished pipeline for message, storing and not redirecting to any module');
               this._storeMessage(storedMessage);
             } else {
-              const module = modules[0];
+              const module = Orchestrator.checkModule(modules[0]);
 
               logger.info('Redirecting message to module', module.service, module.name);
               logger.debug('Sending message to queue', storedMessage, module.workerQueueName);
@@ -466,7 +467,7 @@ class Orchestrator {
    */
   static
   checkModule(module) {
-    return typeof module === Module ? module : new Module(module);
+    return module instanceof Module ? module : new Module(module);
   }
 
   /**

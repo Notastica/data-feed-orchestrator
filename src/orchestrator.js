@@ -34,7 +34,8 @@ class Orchestrator {
       messagesQueue: 'o_messages',
       amqpURL: 'amqp://localhost:5672',
       messagesIndex: 'messages',
-      messagesType: 'mType'
+      messagesType: 'mType',
+      esHost: 'localhost:9200'
     };
 
     options = _.defaults(options || {}, defaults);
@@ -104,6 +105,13 @@ class Orchestrator {
     this.amqpURL = options.amqpURL;
 
     /**
+     * A string with the elasticsearch host
+     * @default localhost:9200
+     * @type {any}
+     */
+    this.esHost = options.esHost;
+
+    /**
      * The amqp context (connection) that this Orchestrator is running
      * @see listen
      * @type {Context}
@@ -161,7 +169,7 @@ class Orchestrator {
         return this.amqpContext.socket('WORKER');
       }).then(this._connectToMessagesQueue)
       .then(() => {
-        return es.connect();
+        return es.connect({ host: this.esHost });
       })
       .then((esClient) => {
         this.esClient = esClient;

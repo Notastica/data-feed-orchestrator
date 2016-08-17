@@ -3,11 +3,19 @@ import logger from './logging/logger';
 import uuid from 'node-uuid';
 import * as mq from './mq/connection';
 
-const o = new Orchestrator({
-  registerQueue: uuid.v4(),
-  messagesQueue: uuid.v4(),
-  messagesIndex: uuid.v4()
-});
+const options = {
+  dbPath: process.env.DB_PATH,
+  name: process.env.NAME,
+  modulesCollectionName: process.env.MODULES_COLLECTION_NAME,
+  registerQueue: process.env.REQISTER_QUEUE,
+  messagesQueue: process.env.MESSAGES_QUEUE,
+  amqpURL: process.env.AMQP_URL,
+  messagesIndex: process.env.MESSAGES_INDEX,
+  messagesType: process.env.MESSAGES_TYPE,
+  esHost: process.env.ES_HOST
+};
+
+const o = new Orchestrator(options);
 
 mq.connect(o.amqpURL).then((context) => {
   const pub = context.socket('PUSH');
@@ -26,5 +34,8 @@ mq.connect(o.amqpURL).then((context) => {
 
 process.on('SIGINT', function () {
   logger.warn('Gracefully shutting down from SIGINT (Ctrl-C)');
-  o.shutdown();
+  o.shutdown().then(() => {
+    logger.warn('Shutdown complete');
+    process.exit();
+  });
 });

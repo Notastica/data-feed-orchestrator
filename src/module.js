@@ -25,7 +25,6 @@ class Module extends EventEmitter {
     if (typeof options === 'string') {
       options = { service: options };
     }
-    options = options || options;
     const defaults = {
       uuid: uuid.v4(),
       name: names.getRandomName(false),
@@ -35,7 +34,7 @@ class Module extends EventEmitter {
     };
 
     options = _.defaults(options, defaults);
-    logger.debug('Initializing module with options:', JSON.stringify(options));
+    logger.debug('Initializing module with options:', options);
 
     // Simple properties that should be added to JSON
     // ---------------------------------------------
@@ -48,6 +47,8 @@ class Module extends EventEmitter {
     this.order = options.order;
     this.registerQueue = options.registerQueue;
     this.amqpURL = options.amqpURL;
+    this.messagesQueue = null;
+
     // ---------------------------------------------
 
     // Complex properties (Objects, classes, etc)
@@ -55,6 +56,7 @@ class Module extends EventEmitter {
     this.workerQueueName = null;
     this.amqpContext = null;
     this.workerSocket = null;
+    this.messageQueueSocket = null;
     // ---------------------------------------------
   }
 
@@ -72,7 +74,8 @@ class Module extends EventEmitter {
       order: this.order,
       registerQueue: this.registerQueue,
       amqpURL: this.amqpURL,
-      workerQueueName: this.workerQueueName
+      workerQueueName: this.workerQueueName,
+      messagesQueue: this.messagesQueue
     });
   }
 
@@ -120,14 +123,16 @@ class Module extends EventEmitter {
    * for new jobs to process
    */
   listen() {
+    logger.debug('Listening for new messages on queue: ', this.workerQueueName);
     this.workerSocket = this.amqpContext.socket('WORKER');
     this.workerSocket.connect(this.workerQueueName);
     const _this = this;
 
     this.workerSocket.on('data', (message) => {
-      logger.debug('New message received', message);
+
+      logger.debug(`New message received ${message.toString()}`);
       try {
-        message = JSON.parse(message.toString());
+        message = JSON.parse(message);
       } catch (err) {
         logger.debug('Could not convert message to JSON, sending raw value');
         message = message.toString();
@@ -140,12 +145,31 @@ class Module extends EventEmitter {
    * Send an acknowledge message back to the orchestrator, this ack the last received job
    * and should be called for every message handled inside #handleMessage
    * @see handleMessage
+   * @param {*} message
    */
-  sendAck() {
-    logger.debug('Sending ACK for last received message');
-    this.workerSocket.ack();
+  afterProcess(message) {
+    this._connectToMessageQueue().then(() => {
+      this.messageQueueSocket.write(JSON.stringify(message));
+      logger.debug('Sending ACK for last received message');
+      this.workerSocket.ack();
+    });
   }
 
+  /**
+   * Connects to the message queue that the Orchestrator has given back in the field messageQueue
+   * @private
+   * @return {Promise}
+   */
+  _connectToMessageQueue() {
+    if (this.messageQueueSocket) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      this.messageQueueSocket = this.amqpContext.socket('PUSH');
+      this.messageQueueSocket.connect(this.messagesQueue, resolve);
+    });
+
+  }
 }
 
 

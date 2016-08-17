@@ -9,6 +9,8 @@ import * as symbols from './utils/symbols';
 import Promise from 'bluebird';
 import _ from 'lodash/core';
 import uuid from 'node-uuid';
+import * as temp from 'temp';
+import JSON from 'json3';
 
 /**
  * The Orchestrator is the class that manages all modules
@@ -26,14 +28,15 @@ class Orchestrator {
    */
   constructor(options) {
     const defaults = {
-      dbPath: 'orchestrator.js',
+      dbPath: temp.path(),
       name: dockerNames.getRandomName(false),
       modulesCollectionName: 'modules',
       registerQueue: 'o_register',
       messagesQueue: 'o_messages',
       amqpURL: 'amqp://localhost:5672',
       messagesIndex: 'messages',
-      messagesType: 'mType'
+      messagesType: 'mType',
+      esHost: 'localhost:9200'
     };
 
     options = _.defaults(options || {}, defaults);
@@ -76,13 +79,19 @@ class Orchestrator {
      * @type {Loki}
      * @private
      */
-    this._db = new Loki(this.dbPath);
+    this._db = new Loki(this.dbPath, {
+      autoload: true, autosave: true, autoloadCallback: () => {
+        this._onRestoreDB();
+      }
+    });
+
+    this.modulesCollectionName = options.modulesCollectionName;
 
     /**
      * The modules collection
      * @type {Collection}
      */
-    this.modulesCollection = this._db.addCollection(options.modulesCollectionName);
+    this.modulesCollection = null;
 
     /**
      * The name of the queue in which registrations will be received
@@ -95,6 +104,13 @@ class Orchestrator {
      * @type {string}
      */
     this.amqpURL = options.amqpURL;
+
+    /**
+     * A string with the elasticsearch host
+     * @default localhost:9200
+     * @type {any}
+     */
+    this.esHost = options.esHost;
 
     /**
      * The amqp context (connection) that this Orchestrator is running
@@ -135,6 +151,14 @@ class Orchestrator {
     if (this._running) {
       return Promise.resolve(this);
     }
+    if (!this.modulesCollection) {
+      return new Promise((resolve) => {
+        logger.debug('Database not initialized, waiting 100ms');
+        setTimeout(() => {
+          resolve(this.listen());
+        }, 100);
+      });
+    }
     return mq.connect(this.amqpURL)
       .bind(this)
       .then((context) => {
@@ -146,7 +170,7 @@ class Orchestrator {
         return this.amqpContext.socket('WORKER');
       }).then(this._connectToMessagesQueue)
       .then(() => {
-        return es.connect();
+        return es.connect({ host: this.esHost });
       })
       .then((esClient) => {
         this.esClient = esClient;
@@ -180,7 +204,7 @@ class Orchestrator {
     const _this = this;
 
     workerSocket.on('data', (message) => {
-      _this._onMessage(message)
+      _this._onMessage(JSON.parse(message.toString()))
         .then(() => {
           workerSocket.ack();
         });
@@ -200,7 +224,7 @@ class Orchestrator {
     replySocket.on('data', (message) => {
       logger.debug('Received new module registration');
       return this.onNewModule(message).then((m) => {
-        logger.debug('Module registered, writing back response', m);
+        logger.debug('Module registered, writing back response', m.toJSON());
         replySocket.write(m.toJSON());
         logger.debug('Response written');
         return m;
@@ -212,20 +236,28 @@ class Orchestrator {
 
   /**
    * Shutdown this Orchestrator, disconnection from MQ and ES and freeing resources
+   * @return {Promise}
    */
   shutdown() {
-    if (this._running) {
-      if (this.amqpContext) {
-        this.amqpContext.close();
+    return new Promise((resolve) => {
+      if (this._running) {
+        if (this.amqpContext) {
+          this.amqpContext.close();
+        }
+        logger.info(`[${symbols.check}] AMQP disconnected`);
+        if (this.esClient) {
+          this.esClient.close();
+        }
+        logger.info(`[${symbols.check}] Elasticsearch disconnected`);
+        this._running = false;
       }
-      logger.info(`[${symbols.check}] AMQP disconnected`);
-      if (this.esClient) {
-        this.esClient.close();
+      if (this._db) {
+        this._db.close(resolve);
+      } else {
+        resolve();
       }
-      logger.info(`[${symbols.check}] Elasticsearch disconnected`);
-      this._running = false;
-      this.modulesCollection.clear();
-    }
+    });
+
   }
 
   /**
@@ -257,30 +289,26 @@ class Orchestrator {
    * @return {Promise} that resolves if handling of the message is OK
    */
   _onMessage(originalMessage) {
-    return this._storeMessage(originalMessage).then((storedMessage) => {
-      try {
-        storedMessage = JSON.parse(storedMessage.toString());
-        this.findMatchingModules(storedMessage).then((modules) => {
-          if (_.isEmpty(modules)) {
-            logger.info('Finished pipeline for message, storing and not redirecting to any module');
-            this._storeMessage(storedMessage);
-          } else {
-            const module = modules[0];
+    return this._storeMessage(originalMessage)
+      .then((storedMessage) => {
+        return this.findMatchingModules(storedMessage)
+          .then((modules) => {
+            if (_.isEmpty(modules)) {
+              logger.info('Finished pipeline for message, storing and not redirecting to any module');
+              this._storeMessage(storedMessage);
+            } else {
+              const module = Orchestrator.checkModule(modules[0]);
 
-            logger.info('Redirecting message to module', module.service, module.name);
-            logger.info('Sending message to queue', module.workerQueueName);
-            const pushSocket = this.amqpContext.socket('PUSH');
+              logger.info('Redirecting message to module', module.service, module.name);
+              logger.debug('Sending message to queue', storedMessage, module.workerQueueName);
+              const pushSocket = this.amqpContext.socket('PUSH');
 
-            pushSocket.connect(module.workerQueueName);
-            pushSocket.write(storedMessage);
-          }
-        });
-      } catch (err) {
-        logger.err('Could not convert message to JSON', storedMessage.toString());
-        logger.err('Message will be discarded');
-      }
-    });
-
+              pushSocket.connect(module.workerQueueName, () => {
+                pushSocket.write(JSON.stringify(storedMessage));
+              });
+            }
+          });
+      });
   }
 
   /**
@@ -366,6 +394,7 @@ class Orchestrator {
           });
       }
       module.order = ++_this._order;
+      module.messagesQueue = _this.messagesQueue;
       module.workerQueueName = _this.generateModuleQueueName(module);
       return this.modulesCollection.insert(module);
     });
@@ -382,16 +411,18 @@ class Orchestrator {
     return new Promise((resolve) => {
       logger.debug('Finding modules that matches', message);
       const modules = this.modulesCollection.where((module) => {
-        let matches = false;
+        let matchesPositive = true;
+        let matchesNegative = true;
+
 
         if (module.positivePath) {
-          matches = Orchestrator.matchesPath(message, module.positivePath);
+          matchesPositive = Orchestrator.matchesPath(message, module.positivePath);
         }
 
         if (module.negativePath) {
-          matches = !Orchestrator.matchesPath(message, module.negativePath);
+          matchesNegative = !Orchestrator.matchesPath(message, module.negativePath);
         }
-        return matches;
+        return matchesPositive && matchesNegative;
       });
 
       logger.debug('Found modules:', modules.length);
@@ -436,9 +467,27 @@ class Orchestrator {
    */
   static
   checkModule(module) {
-    return typeof module === Module ? module : new Module(module);
+    return module instanceof Module ? module : new Module(module);
   }
 
+  /**
+   * Called when the database is ready
+   * @private
+   */
+  _onRestoreDB() {
+    this.modulesCollection = this._db.getCollection(this.modulesCollectionName);
+    if (!this.modulesCollection) {
+      this.modulesCollection = this._db.addCollection(this.modulesCollectionName);
+    } else {
+      this.modulesCollection.find().forEach((m) => {
+        if (typeof m === 'string') {
+          m = JSON.parse(m);
+        }
+        this.register(m);
+      });
+      logger.debug(`Database loaded with, ${this.modulesCollection.count()} modules`);
+    }
+  }
 }
 
 

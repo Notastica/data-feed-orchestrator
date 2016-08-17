@@ -1,12 +1,10 @@
 {
   "name": "data-feed-orchestrator",
-  "version": "0.0.3",
+  "version": "0.0.6",
   "description": "A data feed orchestrator",
-  "bin": "cli.js",
   "main": "lib/index.js",
   "files": [
-    "lib/",
-    "cli.js"
+    "lib/"
   ],
   "keywords": [
     "big data",
@@ -55,7 +53,9 @@
     "lokijs": "^1.4.1",
     "node-uuid": "^1.4.7",
     "rabbit.js": "0.4.4",
-    "winston": "^2.2.0"
+    "temp": "0.8.3",
+    "winston": "^2.2.0",
+    "json3": "latest"
   },
   "devDependencies": {
     "babel-cli": "^6.5.1",

@@ -8,6 +8,7 @@ import Orchestrator from '../src/orchestrator';
 import uuid from 'node-uuid';
 import Module from '../src/module';
 import dockerNames from 'docker-names';
+import * as temp from 'temp';
 
 
 // TEST SETUP
@@ -23,12 +24,13 @@ describe('Orchestrator', function () {
     o = new Orchestrator({
       registerQueue: `register-${uuid.v4()}`,
       messagesQueue: `messages-${uuid.v4()}`,
-      messagesIndex: `index-${uuid.v4()}`
+      messagesIndex: `index-${uuid.v4()}`,
+      dbPath: temp.path()
     });
   });
 
   after(function () {
-    o.shutdown();
+    return o.shutdown();
   });
 
   const serviceName = dockerNames.getRandomName(false);
@@ -155,6 +157,26 @@ describe('Orchestrator', function () {
     });
   });
 
+  it('Should find a module by positivePath AND negativePath', function () {
+    // const o = new Orchestrator();
+
+    return o.listen().then(() => {
+      const originalModule = new Module({ service: serviceName });
+
+      originalModule.positivePath = '$.positiveKeyName';
+      originalModule.negativePath = '$.negativeKeyName';
+
+      return o.register(originalModule).then(() => {
+        return o.findMatchingModules({ positiveKeyName: 'value' });
+      }).then((modules) => {
+        chai.expect(modules).to.be.a('array');
+        chai.expect(modules[0])
+          .to.have.property('uuid')
+          .that.is.equals(originalModule.uuid);
+      });
+    });
+  });
+
   it('Should NOT find a module by positivePath', function () {
     // const o = new Orchestrator();
 
@@ -229,4 +251,39 @@ describe('Orchestrator', function () {
         });
       });
   });
-});
+  it('Should restore the database between executions', function () {
+
+    const modUUID = uuid.v4();
+
+    return o.shutdown()
+      .then(() => {
+        o = new Orchestrator({ dbPath: temp.path() }); // create new Orchestrator
+        return o.listen(); // start it (initialize everything, including db)
+      })
+      .then(() => {
+        // add a module
+        o.modulesCollection.insert(new Module(modUUID));
+        o.modulesCollection.insert(new Module(modUUID));
+        o.modulesCollection.insert(new Module(modUUID));
+      })
+      .then(() => {
+        // shutdown and close db (should persist)
+        return o.shutdown();
+      })
+      .then(() => {
+        // start a new orchestrator pointing to the same db
+        o = new Orchestrator({ dbPath: o.dbPath });
+        return o.listen();
+      }).then(() => {
+        const modules = o.modulesCollection.find({ service: modUUID });
+
+        chai.expect(modules).not.to.be.empty();
+        chai.expect(modules).to.have.lengthOf(3);
+        chai.expect(modules[0].service).to.be.equals(modUUID);
+        chai.expect(modules[1].service).to.be.equals(modUUID);
+        chai.expect(modules[2].service).to.be.equals(modUUID);
+      });
+  });
+
+})
+;

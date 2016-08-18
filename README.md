@@ -67,7 +67,7 @@ docker run --name orc -v /data --link=mq --link=es -e ES_HOST=es:9200 -e NODE_EN
 
 ```
 
-__NOTE:__ Options for defining the orchestrator should be 
+__NOTE:__ There are several environment variables that can be set when launching the orchestrator, see them all in [app.js](./src/app.js)
 
  - Create your module
 

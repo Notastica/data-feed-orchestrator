@@ -6,6 +6,7 @@ import Promise from 'bluebird';
 import logger from './logging/logger';
 import _ from 'lodash';
 import EventEmitter from 'events';
+import JSON from 'json3';
 
 /**
  * Module class that represents a module that is connected directly to the Orchestrator.
@@ -16,22 +17,33 @@ class Module extends EventEmitter {
   /**
    * Constructor for module, several options are expected.
    * //TODO document all options
-   * @param {Object|string} options
+   * @param {Object|String} options either a config object or a string with the service name
+   * @param {String} options.service the name of the service of this module, modules are grouped by servicename in the Orchestrator
+   * @param {String} [options.uuid] a unique id for the module, one will be generated if not passed
+   * @param {String} [options.name] Name your module, or one will be automatically generated
+   * @param {String} [options.registerQueue] the name of the queue that the orchestrator is listening for registrations, default to 'o_register'
+   * @param {String} [options.amqpURL] the url to connect to the rabbitmq, defaults to: amqp://localhost:5672
+   * @param {Number} [options.prefetch] the number of messages that will be prefetched to be processed, defaults to 1,
+   * which means a new message will only arrive after afterProcess is called
+   * @param {String} [options.positivePath] the json path {@see https://github.com/dchester/jsonpath} that when matched messages will be sent to this module
+   * @param {String} [options.negativePath] the json path {@see https://github.com/dchester/jsonpath} that when NOT matched messages will be sent to this module
+   *
    */
 
   constructor(options) {
     super();
-    options = options || options;
-    if (typeof options === 'string') {
-      options = { service: options };
-    }
+
     const defaults = {
       uuid: uuid.v4(),
       name: names.getRandomName(false),
-      order: -1,
       registerQueue: 'o_register',
-      amqpURL: 'amqp://localhost:5672'
+      amqpURL: 'amqp://localhost:5672',
+      prefecth: 1
     };
+
+    if (typeof options === 'string') {
+      defaults.service = options;
+    }
 
     options = _.defaults(options, defaults);
     logger.debug('Initializing module with options:', options);
@@ -44,16 +56,17 @@ class Module extends EventEmitter {
     this.name = options.name;
     this.positivePath = options.positivePath;
     this.negativePath = options.negativePath;
-    this.order = options.order;
+    this.order = -1;
     this.registerQueue = options.registerQueue;
     this.amqpURL = options.amqpURL;
     this.messagesQueue = null;
+    this.workerQueueName = null;
+    this.prefetch = options.prefetch;
 
     // ---------------------------------------------
 
     // Complex properties (Objects, classes, etc)
     // ---------------------------------------------
-    this.workerQueueName = null;
     this.amqpContext = null;
     this.workerSocket = null;
     this.messageQueueSocket = null;
@@ -75,7 +88,8 @@ class Module extends EventEmitter {
       registerQueue: this.registerQueue,
       amqpURL: this.amqpURL,
       workerQueueName: this.workerQueueName,
-      messagesQueue: this.messagesQueue
+      messagesQueue: this.messagesQueue,
+      prefetch: this.prefetch
     });
   }
 
@@ -124,7 +138,7 @@ class Module extends EventEmitter {
    */
   listen() {
     logger.debug('Listening for new messages on queue: ', this.workerQueueName);
-    this.workerSocket = this.amqpContext.socket('WORKER');
+    this.workerSocket = this.amqpContext.socket('WORKER', { prefetch: this.prefetch });
     this.workerSocket.connect(this.workerQueueName);
     const _this = this;
 

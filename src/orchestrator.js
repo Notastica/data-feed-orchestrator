@@ -36,7 +36,8 @@ class Orchestrator {
       amqpURL: 'amqp://localhost:5672',
       messagesIndex: 'messages',
       messagesType: 'mType',
-      esHost: 'localhost:9200'
+      esHost: 'localhost:9200',
+      prefetch: 100
     };
 
     options = _.defaults(options || {}, defaults);
@@ -140,6 +141,12 @@ class Orchestrator {
      * @type {string}
      */
     this.messagesType = options.messagesType;
+
+    /**
+     * The amount of messages to be prefetched
+     * @type {Number}
+     */
+    this.prefetch = options.prefetch;
   }
 
 
@@ -167,7 +174,7 @@ class Orchestrator {
       })
       .then(this._connectToRegistrationQueue)
       .then(() => {
-        return this.amqpContext.socket('WORKER');
+        return this.amqpContext.socket('WORKER', { prefetch: this.prefetch });
       }).then(this._connectToMessagesQueue)
       .then(() => {
         return es.connect({ host: this.esHost });

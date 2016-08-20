@@ -22,4 +22,20 @@ describe('Module', function () {
     });
   });
 
+  it('Should fail when a new property is added and not reflected in the test', function () {
+    const m = new Module('test-service-name');
+
+    // STATIC TEST
+    // This is to make sure any new property added to the Module class is verified
+    // if it should be added to the toJSON() method that is called on module serialization.
+    // if a new property is added that should be serialized is not added to the toJSON method
+    // it will not be serialized and the functionality might fail.
+    // After verification this constant should be increased by the number of new properties
+    const expectedKeysSize = 18;
+
+    chai.expect(Object.keys(m).length).to.be.equals(expectedKeysSize);
+
+
+  });
+
 });

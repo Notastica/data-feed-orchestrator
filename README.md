@@ -63,7 +63,7 @@ docker run --name=es -d -p 9200:9200 -p 9300:9300 elasticsearch:2.0
 docker run --name=mq -d --hostname my-rabbit -p 127.0.0.1:5672:5672 -p 127.0.0.1:8080:15672 rabbitmq:3-management
 
 #Launch the orchestrator
-docker run --name orc -v /data --link=mq --link=es -e ES_HOST=es:9200 -e NODE_ENV=prod -e AMQP_URL=amqp://mq:5672 notastica/orquestrator node lib/app.js
+docker run --name orc -v /data --link=mq --link=es -e ES_HOST=es:9200 -e NODE_ENV=prod -e AMQP_URL=amqp://mq:5672 notastica/orchestrator node lib/app.js
 
 ```
 

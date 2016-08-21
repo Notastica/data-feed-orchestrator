@@ -6,7 +6,7 @@ import Promise from 'bluebird';
 import logger from './logging/logger';
 import _ from 'lodash';
 import EventEmitter from 'events';
-import JSON from 'json3';
+import * as JSON from 'json3';
 
 /**
  * Module class that represents a module that is connected directly to the Orchestrator.

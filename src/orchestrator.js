@@ -10,7 +10,7 @@ import Promise from 'bluebird';
 import _ from 'lodash/core';
 import uuid from 'node-uuid';
 import * as temp from 'temp';
-import JSON from 'json3';
+import * as JSON from 'json3';
 
 /**
  * The Orchestrator is the class that manages all modules
@@ -74,6 +74,14 @@ class Orchestrator {
      * @type {string}
      */
     this.messagesQueue = options.messagesQueue;
+
+
+    /**
+     * Wether the database was fully initialized or not.
+     * @type {boolean}
+     * @private
+     */
+    this._dbInitialized = false;
 
     /**
      * The lokijs database;
@@ -158,7 +166,7 @@ class Orchestrator {
     if (this._running) {
       return Promise.resolve(this);
     }
-    if (!this.modulesCollection) {
+    if (!this._dbInitialized) {
       return new Promise((resolve) => {
         logger.debug('Database not initialized, waiting 100ms');
         setTimeout(() => {
@@ -486,14 +494,19 @@ class Orchestrator {
     if (!this.modulesCollection) {
       this.modulesCollection = this._db.addCollection(this.modulesCollectionName);
     } else {
-      this.modulesCollection.find().forEach((m) => {
+
+      const parseAndRegister = (m) => {
         if (typeof m === 'string') {
           m = JSON.parse(m);
         }
-        this.register(m);
-      });
+        return this.register(m);
+      };
+
+      Promise.all(this.modulesCollection.find().map(parseAndRegister));
+
       logger.debug(`Database loaded with, ${this.modulesCollection.count()} modules`);
     }
+    this._dbInitialized = true;
   }
 }
 

@@ -25,6 +25,8 @@ class Module extends EventEmitter {
    * @param {String} [options.amqpURL] the url to connect to the rabbitmq, defaults to: amqp://localhost:5672
    * @param {Number} [options.prefetch] the number of messages that will be prefetched to be processed, defaults to 1,
    * which means a new message will only arrive after afterProcess is called
+   * @param {String} [options.type] The type of this module, it should be either persistence or enricher
+   * a Peristence module is the module that only persists data, you can only have a single persistence module (same instances can be launched by service to process heavy load)
    * @param {String} [options.positivePath] the json path {@see https://github.com/dchester/jsonpath} that when matched messages will be sent to this module
    * @param {String} [options.negativePath] the json path {@see https://github.com/dchester/jsonpath} that when NOT matched messages will be sent to this module
    *
@@ -38,6 +40,7 @@ class Module extends EventEmitter {
       name: names.getRandomName(false),
       registerQueue: 'o_register',
       amqpURL: 'amqp://localhost:5672',
+      type: 'processor',
       prefecth: 1
     };
 
@@ -62,6 +65,7 @@ class Module extends EventEmitter {
     this.messagesQueue = null;
     this.workerQueueName = null;
     this.prefetch = options.prefetch;
+    this.type = options.type;
 
     // ---------------------------------------------
 
@@ -89,7 +93,8 @@ class Module extends EventEmitter {
       amqpURL: this.amqpURL,
       workerQueueName: this.workerQueueName,
       messagesQueue: this.messagesQueue,
-      prefetch: this.prefetch
+      prefetch: this.prefetch,
+      type: this.type
     });
   }
 
@@ -116,7 +121,6 @@ class Module extends EventEmitter {
         return new Promise((resolve) => {
           req.connect(_this.registerQueue, () => {
             req.write(_this.toJSON());
-            req.pipe(process.stdout);
             req.on('data', (res) => {
               const m = JSON.parse(res);
 
@@ -162,6 +166,13 @@ class Module extends EventEmitter {
    * @param {*} message
    */
   afterProcess(message) {
+
+    message.__meta = {
+      type: this.type,
+      service: this.service,
+      uuid: this.uuid
+    };
+
     this._connectToMessageQueue().then(() => {
       this.messageQueueSocket.write(JSON.stringify(message));
       logger.debug('Sending ACK for last received message');

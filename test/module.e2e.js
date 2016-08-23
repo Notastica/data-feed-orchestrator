@@ -8,6 +8,7 @@ import Orchestrator from '../src/orchestrator';
 import Module from '../src/module';
 import uuid from 'node-uuid';
 import logger from '../src/logging/logger';
+import mock from './mock-persistence-module';
 
 // TEST SETUP
 // =============================================================================
@@ -20,6 +21,10 @@ describe('Module integration', function () {
     messagesQueue: `messages-${uuid.v4()}`,
     messagesIndex: `index-${uuid.v4()}`,
     messagesType: `type-${uuid.v4()}`
+  });
+
+  before(function () {
+    mock(o).register();
   });
 
   after(() => {

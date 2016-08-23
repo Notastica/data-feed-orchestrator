@@ -7,6 +7,7 @@ import dirtyChai from 'dirty-chai';
 import Orchestrator from '../src/orchestrator';
 import uuid from 'node-uuid';
 import logger from '../src/logging/logger';
+import elasticsearch from '../src/modules/elasticsearch';
 
 // TEST SETUP
 // =============================================================================
@@ -16,20 +17,36 @@ describe('Orchestrator Integration', function () {
 
   it('Should store message on ES', function () {
 
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(10000); //
 
-    const o = new Orchestrator({
+    const defaultOptions = {
       registerQueue: `register-${uuid.v4()}`,
-      messagesQueue: `messages-${uuid.v4()}`,
-      messagesIndex: `index-${uuid.v4()}`,
-      messagesType: `type-${uuid.v4()}`
-    });
+      messagesQueue: `messages-${uuid.v4()}`
+    };
+
+    const o = new Orchestrator(defaultOptions);
 
     after(() => {
       o.shutdown();
     });
 
-    return o.listen()
+    const esOptions = {
+      messagesIndex: `index-${uuid.v4()}`,
+      messagesType: `type-${uuid.v4()}`
+    };
+
+    esOptions.registerQueue = defaultOptions.registerQueue;
+
+    const m = elasticsearch(esOptions);
+
+    o.listen(); // should be asynchronous
+    return m.register()
       .then(() => {
+        logger.info(`Module started and waiting for new messages on queue ${m.workerQueueName}`);
+      })
+      .then(() => {
+
         const pub = o.amqpContext.socket('PUSH');
         const message = { uuid: uuid.v4() };
 
@@ -39,7 +56,7 @@ describe('Orchestrator Integration', function () {
 
         return new Promise((resolve) => {
           const checkInterval = setInterval(() => {
-            o.esClient.count({
+            m.esClient.count({
               index: o.messagesIndex,
               ignoreUnavailable: true
             }, (err, response) => {

@@ -17,6 +17,8 @@ describe('Orchestrator Integration', function () {
 
   it('Should store message on ES', function () {
 
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(10000); //
 
     const defaultOptions = {
       registerQueue: `register-${uuid.v4()}`,

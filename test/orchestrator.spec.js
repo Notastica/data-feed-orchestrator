@@ -9,7 +9,7 @@ import uuid from 'node-uuid';
 import Module from '../src/module';
 import dockerNames from 'docker-names';
 import * as temp from 'temp';
-
+import mock from './mock-persistence-module';
 
 // TEST SETUP
 // =============================================================================
@@ -19,7 +19,7 @@ let o;
 
 describe('Orchestrator', function () {
 
-  before(function () {
+  beforeEach(function () {
 
     o = new Orchestrator({
       registerQueue: `register-${uuid.v4()}`,
@@ -27,9 +27,13 @@ describe('Orchestrator', function () {
       messagesIndex: `index-${uuid.v4()}`,
       dbPath: temp.path()
     });
+
+    mock({
+      registerQueue: o.registerQueue
+    }).register();
   });
 
-  after(function () {
+  afterEach(function () {
     return o.shutdown();
   });
 
@@ -255,11 +259,8 @@ describe('Orchestrator', function () {
 
     const modUUID = uuid.v4();
 
-    return o.shutdown()
-      .then(() => {
-        o = new Orchestrator({ dbPath: temp.path() }); // create new Orchestrator
-        return o.listen(); // start it (initialize everything, including db)
-      })
+    o = new Orchestrator({ dbPath: temp.path(), registerQueue: o.registerQueue }); // create new Orchestrator
+    return o.listen()
       .then(() => {
         // add a module
         o.modulesCollection.insert(new Module(modUUID));

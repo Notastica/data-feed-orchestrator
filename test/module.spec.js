@@ -31,7 +31,7 @@ describe('Module', function () {
     // if a new property is added that should be serialized is not added to the toJSON method
     // it will not be serialized and the functionality might fail.
     // After verification this constant should be increased by the number of new properties
-    const expectedKeysSize = 18;
+    const expectedKeysSize = 19;
 
     chai.expect(Object.keys(m).length).to.be.equals(expectedKeysSize);
 

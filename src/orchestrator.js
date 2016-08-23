@@ -4,7 +4,6 @@ import Module from './module';
 import jsonpath from 'jsonpath';
 import dockerNames from 'docker-names';
 import * as mq from './mq/connection';
-import * as es from './es/connection';
 import * as symbols from './utils/symbols';
 import Promise from 'bluebird';
 import _ from 'lodash/core';
@@ -34,9 +33,6 @@ class Orchestrator {
       registerQueue: 'o_register',
       messagesQueue: 'o_messages',
       amqpURL: 'amqp://localhost:5672',
-      messagesIndex: 'messages',
-      messagesType: 'mType',
-      esHost: 'localhost:9200',
       prefetch: 100
     };
 
@@ -115,13 +111,6 @@ class Orchestrator {
     this.amqpURL = options.amqpURL;
 
     /**
-     * A string with the elasticsearch host
-     * @default localhost:9200
-     * @type {any}
-     */
-    this.esHost = options.esHost;
-
-    /**
      * The amqp context (connection) that this Orchestrator is running
      * @see listen
      * @type {Context}
@@ -129,32 +118,12 @@ class Orchestrator {
     this.amqpContext = null;
 
     /**
-     * The elasticsearch connection that this Orchestrator is connected
-     * @see listen
-     * @type {elasticsearch}
-     */
-    this.esClient = null;
-
-    /**
-     * The index in which messages will be stored in the elasticsearch
-     * @type {string}
-     * @see _storeMessage
-     */
-    this.messagesIndex = options.messagesIndex;
-
-    /**
-     * The type in which messages will be stored under the index in elasticsearch
-     * @see messagesIndex
-     * @see _storeMessage
-     * @type {string}
-     */
-    this.messagesType = options.messagesType;
-
-    /**
      * The amount of messages to be prefetched
      * @type {Number}
      */
     this.prefetch = options.prefetch;
+
+    this.modulesSockets = [];
   }
 
 
@@ -181,30 +150,29 @@ class Orchestrator {
         return context.socket('REPLY');
       })
       .then(this._connectToRegistrationQueue)
+      .then(this._waitForPersistenceModules)
       .then(() => {
         return this.amqpContext.socket('WORKER', { prefetch: this.prefetch });
-      }).then(this._connectToMessagesQueue)
-      .then(() => {
-        return es.connect({ host: this.esHost });
-      })
-      .then((esClient) => {
-        this.esClient = esClient;
-        logger.info(`[${symbols.check}] ElasticSearch connected`);
-        this._running = true;
-      }).then(() => {
-        return this.esClient.indices.exists({ index: this.messagesIndex })
-          .then(() => {
-            logger.debug(`[${symbols.check}] ElasticSearch already exists [${this.messagesIndex}]`);
-            return this;
-          }).catch(() => {
-            return this.esClient.indices.create({ index: this.messagesIndex })
-              .then(() => {
-                logger.debug(`[${symbols.check}] ElasticSearch index created [${this.messagesIndex}]`);
-              });
-          });
+      }).then(this._connectToMessagesQueue);
+  }
 
-      });
+  /**
+   * Wait for persistence modules to register
+   * @private
+   * @return {Promise} that only resolves when a persistence module is connected
+   */
+  _waitForPersistenceModules() {
 
+    return new Promise((resolve) => {
+      if (this.modulesCollection.find({ type: 'persistence' }).length === 0) {
+        logger.debug('No persistence module registered, will wait for 200ms');
+        setTimeout(() => {
+          this._waitForPersistenceModules().then(resolve);
+        }, 200);
+      } else {
+        resolve();
+      }
+    });
   }
 
   /**
@@ -219,10 +187,8 @@ class Orchestrator {
     const _this = this;
 
     workerSocket.on('data', (message) => {
-      _this._onMessage(JSON.parse(message.toString()))
-        .then(() => {
-          workerSocket.ack();
-        });
+      _this._onMessage(JSON.parse(message.toString()));
+      workerSocket.ack();
     });
     return workerSocket;
   }
@@ -304,27 +270,47 @@ class Orchestrator {
    * @return {Promise} that resolves if handling of the message is OK
    */
   _onMessage(originalMessage) {
-    return this._storeMessage(originalMessage)
-      .then((storedMessage) => {
-        return this.findMatchingModules(storedMessage)
-          .then((modules) => {
-            if (_.isEmpty(modules)) {
-              logger.info('Finished pipeline for message, storing and not redirecting to any module');
-              this._storeMessage(storedMessage);
-            } else {
-              const module = Orchestrator.checkModule(modules[0]);
 
-              logger.info('Redirecting message to module', module.service, module.name);
-              logger.debug('Sending message to queue', storedMessage, module.workerQueueName);
-              const pushSocket = this.amqpContext.socket('PUSH');
+    const meta = originalMessage.__meta;
 
-              pushSocket.connect(module.workerQueueName, () => {
-                pushSocket.write(JSON.stringify(storedMessage));
-              });
-            }
-          });
-      });
+    delete originalMessage.__meta; // Removing meta to make sure it's not send to other modules
+    if (meta && meta.type === 'persistence') { // If it's coming from the persistence module
+      return this.findMatchingModules(originalMessage)
+        .then((modules) => {
+          if (_.isEmpty(modules)) {
+            logger.info('Finished pipeline for message, storing and not redirecting to any module');
+          } else {
+            return this._sendMessageToModule(originalMessage, modules[0]);
+          }
+        });
+    }
+    return this._storeMessage(originalMessage);
   }
+
+  /**
+   * Send the given message to the given module.
+   * @param {*} message
+   * @param {Module} module
+   * @private
+   */
+  _sendMessageToModule(message, module) {
+    module = Orchestrator.checkModule(module);
+
+    logger.info('Redirecting message to module', module.service, module.name);
+    logger.debug('Sending message to queue', message, module.workerQueueName);
+    if (!this.modulesSockets[module.service]) {
+      const pushSocket = this.amqpContext.socket('PUSH');
+
+      this.modulesSockets[module.service] = pushSocket;
+      pushSocket.connect(module.workerQueueName, () => {
+        this._sendMessageToModule(message, module);
+      });
+
+    } else {
+      this.modulesSockets[module.service].write(JSON.stringify(message));
+    }
+  }
+
 
   /**
    * Stores the arrived message into the elasticsearch
@@ -340,19 +326,15 @@ class Orchestrator {
       message.uuid = uuid.v4();
     }
     return new Promise((resolve, reject) => {
-      _this.esClient.index({
-        index: _this.messagesIndex,
-        type: _this.messagesType,
-        body: message,
-        id: message.uuid
-      }, function (err, response) {
-        if (err) {
-          reject(err);
-        } else {
-          logger.debug('Message stored in elasticsearch under id', response._id);
-          resolve(message);
-        }
-      });
+      const modules = _this.modulesCollection.find({ type: 'persistence' });
+
+      if (modules.length === 1) { // only allow 1 persistence module for now
+        this._sendMessageToModule(message, modules[0]);
+      } else if (module.length > 1) {
+        reject(new Error('More than 1 persistence module is currently not supported'));
+      } else {
+        reject(new Error('No persistence module registered, orchestrator should not have been started'));
+      }
     });
   }
 
@@ -364,17 +346,16 @@ class Orchestrator {
    */
   unregister(module) {
 
-    return Promise.resolve()
-      .then(() => {
-        module = Orchestrator.checkModule(module);
-        const previousModule = this.modulesCollection.find({ uuid: module.uuid });
+    return new Promise((resolve) => {
+      module = Orchestrator.checkModule(module);
+      const previousModule = this.modulesCollection.find({ uuid: module.uuid });
 
-        if (previousModule) {
-          logger.info(`Unregistering ${module.name} with uuid ${module.uuid}`);
-          this.modulesCollection.remove(previousModule);
-        }
-      });
-
+      if (previousModule) {
+        logger.info(`Unregistering ${module.name} with uuid ${module.uuid}`);
+        this.modulesCollection.remove(previousModule);
+      }
+      resolve();
+    });
   }
 
 
@@ -401,12 +382,8 @@ class Orchestrator {
       logger.info('Registering new module', module);
 
       if (_this.isRegistered(module)) {
-        logger.info(`Module ${module.name} already registered for uuir ${module.uuid}`);
-        logger.info('Unregistering previously registered module, to register the new one');
-        return _this.unregister(this.modulesCollection.find({ uuid: module.uuid })[0])
-          .then(() => {
-            return _this.register(module);
-          });
+        logger.info(`Module ${module.name} already registered for uuid ${module.uuid}`);
+        return this.modulesCollection.update(module);
       }
       module.order = ++_this._order;
       module.messagesQueue = _this.messagesQueue;
@@ -426,6 +403,9 @@ class Orchestrator {
     return new Promise((resolve) => {
       logger.debug('Finding modules that matches', message);
       const modules = this.modulesCollection.where((module) => {
+        if (module.type === 'persistence') {
+          return false;
+        }
         let matchesPositive = true;
         let matchesNegative = true;
 

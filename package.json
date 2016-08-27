@@ -1,6 +1,6 @@
 {
   "name": "data-feed-orchestrator",
-  "version": "0.2",
+  "version": "0.2.0",
   "description": "A data feed orchestrator",
   "main": "lib/index.js",
   "files": [

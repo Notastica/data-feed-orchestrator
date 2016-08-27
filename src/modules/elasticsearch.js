@@ -36,7 +36,7 @@ const elasticsearch = (options) => {
           id: message.uuid
         }, function (err, response) {
           if (err) {
-            logger.warn('There was an error indexing the messa in elasticsearch', err);
+            logger.warn('There was an error indexing the message in elasticsearch', err);
           } else {
             logger.info('Message stored in elasticsearch under id', response._id);
           }

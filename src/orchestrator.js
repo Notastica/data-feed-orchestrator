@@ -164,7 +164,7 @@ class Orchestrator {
   _waitForPersistenceModules() {
 
     return new Promise((resolve) => {
-      if (this.modulesCollection.find({ type: 'persistence' }).length === 0) {
+      if (this._hasPersistenceModule()) {
         logger.debug('No persistence module registered, will wait for 200ms');
         setTimeout(() => {
           this._waitForPersistenceModules().then(resolve);
@@ -173,6 +173,15 @@ class Orchestrator {
         resolve();
       }
     });
+  }
+
+  /**
+   * Check if a persistence module is already registered
+   * @return {boolean}
+   * @private
+   */
+  _hasPersistenceModule() {
+    return this.modulesCollection.find({ type: 'persistence' }).length === 0;
   }
 
   /**
@@ -330,7 +339,7 @@ class Orchestrator {
 
       if (modules.length === 1) { // only allow 1 persistence module for now
         this._sendMessageToModule(message, modules[0]);
-      } else if (module.length > 1) {
+      } else if (modules.length > 1) {
         reject(new Error('More than 1 persistence module is currently not supported'));
       } else {
         reject(new Error('No persistence module registered, orchestrator should not have been started'));
@@ -375,19 +384,25 @@ class Orchestrator {
    * @return {*|Promise}
    */
   register(module) {
-    const _this = this; // or mocha tests fails sometimes
 
     return Promise.resolve().then(() => {
       module = Orchestrator.checkModule(module);
       logger.info('Registering new module', module);
 
-      if (_this.isRegistered(module)) {
+      if (this.isRegistered(module)) {
         logger.info(`Module ${module.name} already registered for uuid ${module.uuid}`);
         return this.modulesCollection.update(module);
       }
-      module.order = ++_this._order;
-      module.messagesQueue = _this.messagesQueue;
-      module.workerQueueName = _this.generateModuleQueueName(module);
+
+      // Only 1 persistence module allowed, the new one always replace the old one
+      if (module.type === 'persistence' && this._hasPersistenceModule()) {
+        this.modulesCollection.removeWhere((m) => {
+          return m.type === 'persistence';
+        });
+      }
+      module.order = ++this._order;
+      module.messagesQueue = this.messagesQueue;
+      module.workerQueueName = this.generateModuleQueueName(module);
       return this.modulesCollection.insert(module);
     });
   }

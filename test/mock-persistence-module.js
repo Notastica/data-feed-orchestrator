@@ -8,8 +8,10 @@ const mock = (options) => {
 
   const m = new Module(options);
 
+  m.messages = {};
   m.on('data', (message) => {
     logger.info('[MOCK] Lets pretend I actually persisted anything');
+    m.messages[message.uuid] = message;
     m.afterProcess(message);
   });
   return m;

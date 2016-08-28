@@ -41,7 +41,7 @@ class Module extends EventEmitter {
       registerQueue: 'o_register',
       amqpURL: 'amqp://localhost:5672',
       type: 'processor',
-      prefecth: 1
+      prefetch: 1
     };
 
     if (typeof options === 'string') {

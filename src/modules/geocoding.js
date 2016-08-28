@@ -10,7 +10,7 @@ const defaults = {
   sourceFields: 'address',
   positivePath: 'address',
   negativePath: 'location',
-  addressConcatenateChar: '-',
+  addressConcatenateChar: ',',
   destinationField: 'location',
   serviceName: 'geocoding',
   prefetch: 10,

@@ -84,7 +84,8 @@ describe('geocoding module', function () {
       sameVenueField: 'placeId',
       sortEsQueryField: 'uuid',
       sortEsQueryOrder: 'desc',
-      esIndex: o.messagesIndex
+      esIndex: o.messagesIndex,
+      prefetch: 1
     }, defaultOptions, o));
 
     es.register().then((result) => {
@@ -104,10 +105,9 @@ describe('geocoding module', function () {
 
       pub.connect(o.messagesQueue, () => {
         pub.write(JSON.stringify(message1));
-        // Send some ms after to simulate pipe delay
-        setTimeout(() => {
+        setInterval(() => { // if one of them pass, it means it works
           pub.write(JSON.stringify(message2));
-        }, 2000);
+        }, 100); // lets give some time to ES
       });
 
       return new Promise((resolve) => {

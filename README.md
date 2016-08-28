@@ -1,4 +1,5 @@
 
+  [![bitHound Code](https://www.bithound.io/github/Notastica/data-feed-orchestrator/badges/code.svg)](https://www.bithound.io/github/Notastica/data-feed-orchestrator)
   [![Codacy](https://api.codacy.com/project/badge/Grade/a22cdb0e4712418d898e301da3f92bbf)](https://www.codacy.com/app/Notastica/data-feed-orchestrator?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Notastica/data-feed-orchestrator&amp;utm_campaign=Badge_Grade)
   [![NPM Version](https://img.shields.io/npm/v/data-feed-orchestrator.svg)](https://npmjs.org/package/data-feed-orchestrator)
   [![License](https://img.shields.io/npm/l/data-feed-orchestrator.svg)](http://opensource.org/licenses/MIT)

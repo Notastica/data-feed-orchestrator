@@ -112,6 +112,7 @@ const geocoding = (options) => {
 
     sort[options.sortEsQueryField] = { order: options.sortEsQueryOrder };
     query.body.sort.push(sort);
+    logger.debug(`Built query ${query}`);
 
     return query;
 
@@ -120,12 +121,15 @@ const geocoding = (options) => {
   const populateFromElasticsearch = function (esClient, message) {
     // Query elasticsearch and return an object if found
     return new Promise((resolve) => {
+      logger.debug('Trying to populate from elasticsearch');
       esClient.search(buildEsQuery(message))
         .then((resp) => {
           const hits = resp.hits.hits;
 
+          logger.debug(`Elasticearch returned ${hits.length} hits`);
           if (hits && hits.length > 0) {
             // populate the destination field in the message
+            logger.debug('Updating message with data from elasticsearch');
             message[options.destinationField] = hits[0]._source[options.destinationField];
           }
           // delivery the message, populated or not
@@ -154,7 +158,11 @@ const geocoding = (options) => {
             return populateFromElasticsearch(esClient, message);
           }
           return message;
+        }).catch((err) => {
+          logger.info('There was an error querying elasticsearch', err);
+          return message;
         }).then((updatedMessage) => {
+          updatedMessage = updatedMessage || message; // in case for some reason we don't get an updated version
           if (updatedMessage[options.destinationField]) {
             logger.info('Already populated in elasticsearch, using latest value');
             return updatedMessage;

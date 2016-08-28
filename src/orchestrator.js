@@ -181,7 +181,7 @@ class Orchestrator {
    * @private
    */
   _hasPersistenceModule() {
-    return this.modulesCollection.find({ type: 'persistence' }).length === 0;
+    return this.modulesCollection.find({ type: 'persistence' }).length > 0;
   }
 
   /**

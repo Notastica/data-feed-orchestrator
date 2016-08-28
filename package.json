@@ -1,6 +1,6 @@
 {
   "name": "data-feed-orchestrator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A data feed orchestrator",
   "main": "lib/index.js",
   "files": [
@@ -42,7 +42,8 @@
     "validate"
   ],
   "dependencies": {
-    "bluebird": "3.4.1",
+    "@google/maps": "^0.1.0",
+    "bluebird": "3.4.3",
     "body-parser": "^1.15.2",
     "chalk": "^1.1.1",
     "docker-names": "^1.0.0",

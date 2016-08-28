@@ -178,14 +178,19 @@ const geocoding = (options) => {
 
           return new Promise((resolve, reject) => {
             m.googleMapsClient.geocode({
-              address: address
+              address: address,
+              timeout: 5000 // 5 seconds google not answering? something is wrong
             }, function (err, response) {
               if (err) {
                 logger.warn(`[${symbols.x}] Error returned from Google Geocode API`, err);
                 reject(err);
+                return;
               } else if (response.json.results && response.json.results.length > 0) {
                 logger.info('Got response back from google api');
                 updatedMessage[options.destinationField] = response.json.results[0];
+              } else {
+                updatedMessage[options.destinationField] = 'UNKNOWN';
+                logger.info(`Google was Unable to find the address for the given message, setting as as ${updatedMessage[options.destinationField]}`);
               }
               resolve(updatedMessage);
             });

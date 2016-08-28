@@ -43,7 +43,7 @@
   ],
   "dependencies": {
     "@google/maps": "^0.1.0",
-    "bluebird": "3.4.1",
+    "bluebird": "3.4.3",
     "body-parser": "^1.15.2",
     "chalk": "^1.1.1",
     "docker-names": "^1.0.0",

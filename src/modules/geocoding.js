@@ -112,7 +112,7 @@ const geocoding = (options) => {
 
     sort[options.sortEsQueryField] = { order: options.sortEsQueryOrder };
     query.body.sort.push(sort);
-    logger.debug(`Built query ${query}`);
+    logger.debug(`Built query:\n${JSON.stringify(query, null, 4)}`);
 
     return query;
 

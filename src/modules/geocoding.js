@@ -13,7 +13,7 @@ const defaults = {
   addressConcatenateChar: ',',
   destinationField: 'location',
   serviceName: 'geocoding',
-  prefetch: 10,
+  prefetch: 1,
   queryEs: false,
   esHost: 'localhost:9200'
 };
@@ -195,6 +195,11 @@ const geocoding = (options) => {
               resolve(updatedMessage);
             });
           });
+        })
+        .catch((err) => {
+          logger.warn('There was an error getting the location, retuning the message untouched.');
+          logger.debug('Error:', err);
+          return message;
         })
         .then((finalMessage) => {
           m.afterProcess(finalMessage);

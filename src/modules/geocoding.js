@@ -100,7 +100,13 @@ const geocoding = (options) => {
     // {
     //   "id": message.id
     // }
-    query.body.query.match[options.sameVenueField] = jsonpath.value(message, jsonpath.parse(options.sameVenueField));
+    const value = jsonpath.value(message, jsonpath.parse(options.sameVenueField));
+
+    if (!value) {
+      throw new Error(`Same venue field ${options.sameVenueField} is ${value} and cannot be queried`);
+    }
+
+    query.body.query.match[options.sameVenueField] = value;
 
     // This will generate something like:
     // {

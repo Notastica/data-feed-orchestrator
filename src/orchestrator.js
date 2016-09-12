@@ -391,7 +391,8 @@ class Orchestrator {
 
       if (this.isRegistered(module)) {
         logger.info(`Module ${module.name} already registered for uuid ${module.uuid}`);
-        return this.modulesCollection.update(module);
+        this.modulesCollection.removeWhere({ uuid: module.uuid });
+        return this.modulesCollection.insert(module);
       }
 
       // Only 1 persistence module allowed, the new one always replace the old one

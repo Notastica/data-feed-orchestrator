@@ -120,7 +120,3 @@ Let us know the nice things you build with it 👍
 ## Contributing
 
 Contributions and issues report, as well as feature requests (and Pull requests) are highly welcome!
-
-# ROADMAP
- - [ ] Unregister a module if it goes down
- - [ ] Query ES on module registration to see if messages matches the new module

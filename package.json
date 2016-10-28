@@ -64,7 +64,7 @@
     "babel-core": "^6.18.0",
     "babel-eslint": "^7.0.0",
     "babel-plugin-transform-function-bind": "^6.5.2",
-    "babel-preset-es2015": "^6.16.0",
+    "babel-preset-es2015": "^6.18.0",
     "chai": "^3.5.0",
     "coveralls": "^2.11.13",
     "dirty-chai": "^1.2.2",

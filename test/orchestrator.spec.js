@@ -198,6 +198,43 @@ describe('Orchestrator', function () {
     });
   });
 
+
+  it('Should resend to the same service when module.resend is omitted', function () {
+    // const o = new Orchestrator();
+
+    return o.listen().then(() => {
+      const originalModule = new Module({ service: serviceName });
+
+      originalModule.negativePath = '$.negativeKeyName';
+
+      return o.register(originalModule).then(() => {
+        return o.findMatchingModules({ key: 'value' }, { service: serviceName });
+      }).then((modules) => {
+        chai.expect(modules).to.be.a('array');
+        chai.expect(modules).not.to.be.empty();
+        chai.expect(modules[0]).to.have.property('uuid').that.is.equals(originalModule.uuid);
+      });
+    });
+  });
+
+
+  it('Should not resend to the same service when module.resend is false', function () {
+    // const o = new Orchestrator();
+
+    return o.listen().then(() => {
+      const originalModule = new Module({ service: serviceName, resend: false });
+
+      originalModule.negativePath = '$.negativeKeyName';
+
+      return o.register(originalModule).then(() => {
+        return o.findMatchingModules({ key: 'value' }, { service: serviceName });
+      }).then((modules) => {
+        chai.expect(modules).to.be.a('array');
+        chai.expect(modules).to.be.empty();
+      });
+    });
+  });
+
   it('Should listen with default options', function () {
     // const o = new Orchestrator();
 

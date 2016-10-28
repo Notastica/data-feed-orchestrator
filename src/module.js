@@ -29,6 +29,7 @@ class Module extends EventEmitter {
    * a Peristence module is the module that only persists data, you can only have a single persistence module (same instances can be launched by service to process heavy load)
    * @param {String} [options.positivePath] the json path {@see https://github.com/dchester/jsonpath} that when matched messages will be sent to this module
    * @param {String} [options.negativePath] the json path {@see https://github.com/dchester/jsonpath} that when NOT matched messages will be sent to this module
+   * @param {boolean} [options.resend] when false the orchestrator will never send the message to the module more than once
    *
    */
 
@@ -41,7 +42,8 @@ class Module extends EventEmitter {
       registerQueue: 'o_register',
       amqpURL: 'amqp://localhost:5672',
       type: 'processor',
-      prefetch: 1
+      prefetch: 1,
+      resend: true
     };
 
     if (typeof options === 'string') {
@@ -66,6 +68,7 @@ class Module extends EventEmitter {
     this.workerQueueName = null;
     this.prefetch = options.prefetch;
     this.type = options.type;
+    this.resend = options.resend;
 
     // ---------------------------------------------
 
@@ -94,7 +97,8 @@ class Module extends EventEmitter {
       workerQueueName: this.workerQueueName,
       messagesQueue: this.messagesQueue,
       prefetch: this.prefetch,
-      type: this.type
+      type: this.type,
+      resend: this.resend
     });
   }
 

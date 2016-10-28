@@ -387,7 +387,7 @@ class Orchestrator {
 
     return Promise.resolve().then(() => {
       module = Orchestrator.checkModule(module);
-      logger.info('Registering new module', module);
+      logger.info('Registering new module', module.toJSON());
 
       if (this.isRegistered(module)) {
         logger.info(`Module ${module.name} already registered for uuid ${module.uuid}`);
@@ -413,15 +413,20 @@ class Orchestrator {
    * Find modules that matches for the give message
    * ordered by their registration _order
    * @param {Object} message
+   * @param {Object} meta the message metadata
    * @return {Promise}
    */
-  findMatchingModules(message) {
+  findMatchingModules(message, meta) {
     return new Promise((resolve) => {
       logger.debug('Finding modules that matches', message);
       const modules = this.modulesCollection.where((module) => {
         if (module.type === 'persistence') {
           return false;
         }
+        if (meta && meta.service === module.service && !module.resend) {
+          return false;
+        }
+
         let matchesPositive = true;
         let matchesNegative = true;
 

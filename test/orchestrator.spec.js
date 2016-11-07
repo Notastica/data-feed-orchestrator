@@ -377,5 +377,13 @@ describe('Orchestrator', function () {
       });
   });
 
+  it('Should resolve when listen is called multiple times', function () {
+    registerMock();
+    return o.listen()
+      .then(() => {
+        return o.listen();
+      });
+  });
+
 })
 ;

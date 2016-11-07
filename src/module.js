@@ -153,12 +153,7 @@ class Module extends EventEmitter {
     this.workerSocket.on('data', (message) => {
 
       logger.debug(`New message received ${message.toString()}`);
-      try {
-        message = JSON.parse(message);
-      } catch (err) {
-        logger.debug('Could not convert message to JSON, sending raw value');
-        message = message.toString();
-      }
+      message = JSON.parse(message);
       _this.emit('data', message);
     });
   }

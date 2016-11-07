@@ -26,7 +26,7 @@ class Module extends EventEmitter {
    * @param {Number} [options.prefetch] the number of messages that will be prefetched to be processed, defaults to 1,
    * which means a new message will only arrive after afterProcess is called
    * @param {String} [options.type] The type of this module, it should be either persistence or enricher
-   * a Peristence module is the module that only persists data, you can only have a single persistence module (same instances can be launched by service to process heavy load)
+   * a Persistence module is the module that only persists data, you can only have a single persistence module (same instances can be launched by service to process heavy load)
    * @param {String} [options.positivePath] the json path {@see https://github.com/dchester/jsonpath} that when matched messages will be sent to this module
    * @param {String} [options.negativePath] the json path {@see https://github.com/dchester/jsonpath} that when NOT matched messages will be sent to this module
    * @param {boolean} [options.resend] when false the orchestrator will never send the message to the module more than once
@@ -107,7 +107,7 @@ class Module extends EventEmitter {
    * The following steps are executed:
    *  - Connect to the MQ
    *  - Create a REQUEST socket to send the registration to the Orchestrator
-   *  - Send itself to the retistration queue
+   *  - Send itself to the registration queue
    *  - Wait for an answer in the reply queue (automagically generated)
    *  - Grabs the response, apply the new values to itself from response
    *  - resolve the promise with itself updated

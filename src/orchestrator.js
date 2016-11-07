@@ -349,8 +349,8 @@ class Orchestrator {
 
       if (modules.length === 1) { // only allow 1 persistence module for now
         this._sendMessageToModule(message, modules[0]);
-      } else if (modules.length > 1) {
-        reject(new Error('More than 1 persistence module is currently not supported'));
+        // } else if (modules.length > 1) { // This is being limited by registration now
+        //   reject(new Error('More than 1 persistence module is currently not supported'));
       } else {
         reject(new Error('No persistence module registered, orchestrator should not have been started'));
       }

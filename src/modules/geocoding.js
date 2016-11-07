@@ -63,7 +63,7 @@ const geocoding = (options) => {
   });
 
 
-  logger.info(`[${symbols.check}]Goole maps client`);
+  logger.info(`[${symbols.check}]Google maps client`);
 
   const m = new Module({
     service: options.serviceName,

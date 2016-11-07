@@ -336,35 +336,36 @@ describe('Orchestrator', function () {
   });
 
   it('Should restore the database between executions', function () {
-    const waitDBInitialized = function () {
+    const waitDBInitialized = function (orc) {
       return new Promise((resolve) => {
         const wait = setInterval(() => {
-          if (o._dbInitialized) {
+          if (orc._dbInitialized) {
             clearInterval(wait);
-            resolve();
+            resolve(orc);
           }
         }, 50);
       });
     };
     const modUUID = uuid.v4();
 
-    o = new Orchestrator({ dbPath: temp.path(), registerQueue: o.registerQueue }); // create new Orchestrator
-    waitDBInitialized().then(() => {
-      // add modules
-      o.modulesCollection.insert(new Module(modUUID));
-      o.modulesCollection.insert(new Module(modUUID));
-      o.modulesCollection.insert(new Module(modUUID));
-    });
 
-    // shutdown and close db (should persist)
-    return o.shutdown()
+    o = new Orchestrator({ dbPath: temp.path(), registerQueue: o.registerQueue }); // create new Orchestrator
+
+    return waitDBInitialized(o)
+      .then(() => {
+        // add modules
+        o.modulesCollection.insert(new Module(modUUID));
+        o.modulesCollection.insert(new Module(modUUID));
+        o.modulesCollection.insert(new Module(modUUID));
+      })
+      .then(() => {
+        return o.shutdown();
+      })
       .then(() => {
         // start a new orchestrator pointing to the same db
         o = new Orchestrator({ dbPath: o.dbPath });
-        registerMock();
 
-
-        return waitDBInitialized();
+        return waitDBInitialized(o);
       }).then(() => {
         const modules = o.modulesCollection.find({ service: modUUID });
 

@@ -242,10 +242,6 @@ class Orchestrator {
           waitAmqp = true;
         }
         logger.info(`[${symbols.check}] AMQP disconnected`);
-        if (this.esClient) {
-          this.esClient.close();
-        }
-        logger.info(`[${symbols.check}] Elasticsearch disconnected`);
         this._running = false;
       }
       if (this._db) {

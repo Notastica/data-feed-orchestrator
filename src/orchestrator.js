@@ -249,7 +249,9 @@ class Orchestrator {
         this._running = false;
       }
       if (this._db) {
-        this._db.close(!waitAmqp ? resolve : null);
+        this._db.saveDatabase(() => {
+          this._db.close(!waitAmqp ? resolve : null);
+        });
       }
       if (!waitAmqp) {
         resolve();
@@ -502,6 +504,7 @@ class Orchestrator {
     this.modulesCollection = this._db.getCollection(this.modulesCollectionName);
     if (!this.modulesCollection) {
       this.modulesCollection = this._db.addCollection(this.modulesCollectionName);
+      this._dbInitialized = true;
     } else {
 
       const parseAndRegister = (m) => {
@@ -511,11 +514,12 @@ class Orchestrator {
         return this.register(m);
       };
 
-      Promise.all(this.modulesCollection.find().map(parseAndRegister));
-
-      logger.debug(`Database loaded with, ${this.modulesCollection.count()} modules`);
+      Promise.all(this.modulesCollection.find().map(parseAndRegister))
+        .then(() => {
+          logger.debug(`Database loaded with, ${this.modulesCollection.count()} modules`);
+          this._dbInitialized = true;
+        });
     }
-    this._dbInitialized = true;
   }
 }
 

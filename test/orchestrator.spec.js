@@ -19,6 +19,12 @@ let o;
 
 describe('Orchestrator', function () {
 
+  const registerMock = function () {
+    mock({
+      registerQueue: o.registerQueue
+    }).register();
+  };
+
   beforeEach(function () {
 
     o = new Orchestrator({
@@ -28,13 +34,6 @@ describe('Orchestrator', function () {
       dbPath: temp.path()
     });
 
-    mock({
-      registerQueue: o.registerQueue
-    }).register();
-  });
-
-  afterEach(function () {
-    return o.shutdown();
   });
 
   const serviceName = dockerNames.getRandomName(false);
@@ -45,7 +44,7 @@ describe('Orchestrator', function () {
 
   it('Should reregister a module if already registered', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const name = 'test-processor';
       const negativePath = '$';
@@ -74,7 +73,7 @@ describe('Orchestrator', function () {
 
   it('Should register a module', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const name = 'test-processor';
 
@@ -89,7 +88,7 @@ describe('Orchestrator', function () {
 
   it('Should unregister a module', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const name = 'test-processor';
 
@@ -108,7 +107,7 @@ describe('Orchestrator', function () {
 
   it('Should find a module by negativePath', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
@@ -127,7 +126,7 @@ describe('Orchestrator', function () {
 
   it('Should NOT find a module by negativePath', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName, registerQueue: o.registerQueue });
 
@@ -144,7 +143,7 @@ describe('Orchestrator', function () {
 
   it('Should find a module by positivePath', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
@@ -163,7 +162,7 @@ describe('Orchestrator', function () {
 
   it('Should find a module by positivePath AND negativePath', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
@@ -183,7 +182,7 @@ describe('Orchestrator', function () {
 
   it('Should NOT find a module by positivePath', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
@@ -201,7 +200,7 @@ describe('Orchestrator', function () {
 
   it('Should resend to the same service when module.resend is omitted', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName });
 
@@ -220,7 +219,7 @@ describe('Orchestrator', function () {
 
   it('Should not resend to the same service when module.resend is false', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen().then(() => {
       const originalModule = new Module({ service: serviceName, resend: false });
 
@@ -237,13 +236,13 @@ describe('Orchestrator', function () {
 
   it('Should listen with default options', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen();
   });
 
   it('Should reject when bad modules are passed', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen()
       .then(() => {
         const m = { invalid_module: 'invalid' };
@@ -256,6 +255,7 @@ describe('Orchestrator', function () {
   });
 
   it('Should increase the order', function () {
+    registerMock();
     return o.listen()
       .then(() => {
         const m1 = new Module({ service: dockerNames.getRandomName(false), registerQueue: o.registerQueue });
@@ -272,16 +272,20 @@ describe('Orchestrator', function () {
 
   it('Should shutdown gracefully', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen()
       .then(() => {
-        return o.shutdown();
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            o.shutdown().then(resolve);
+          }, 200);
+        });
       });
   });
 
   it('Should handle module registration on it\'s queue', function () {
     // const o = new Orchestrator();
-
+    registerMock();
     return o.listen()
       .then(() => {
         const m = new Module({ service: dockerNames.getRandomName(false), registerQueue: o.registerQueue });
@@ -294,7 +298,7 @@ describe('Orchestrator', function () {
   });
 
 
-  it('Should fail when no persistence module is registerd', function (done) {
+  it('Should fail when no persistence module is registered', function (done) {
     // const o = new Orchestrator();
 
     o = new Orchestrator({ dbPath: temp.path(), registerQueue: dockerNames.getRandomName(false) }); // create new Orchestrator
@@ -314,26 +318,53 @@ describe('Orchestrator', function () {
 
   });
 
-  it('Should restore the database between executions', function () {
+  it('Should not start while no persistence module is registered', function (done) {
+    // const o = new Orchestrator();
 
+    o = new Orchestrator({ dbPath: temp.path(), registerQueue: dockerNames.getRandomName(false) }); // create new Orchestrator
+
+    o.listen().then(() => {
+      done(new Error('Should not resolve when no persistence module is registered'));
+    });
+
+
+    setTimeout(() => {
+      chai.expect(o._running).to.be.false();
+      done();
+    }, 200);
+
+  });
+
+  it('Should restore the database between executions', function () {
+    const waitDBInitialized = function () {
+      return new Promise((resolve) => {
+        const wait = setInterval(() => {
+          if (o._dbInitialized) {
+            clearInterval(wait);
+            resolve();
+          }
+        }, 50);
+      });
+    };
     const modUUID = uuid.v4();
 
     o = new Orchestrator({ dbPath: temp.path(), registerQueue: o.registerQueue }); // create new Orchestrator
-    return o.listen()
-      .then(() => {
-        // add a module
-        o.modulesCollection.insert(new Module(modUUID));
-        o.modulesCollection.insert(new Module(modUUID));
-        o.modulesCollection.insert(new Module(modUUID));
-      })
-      .then(() => {
-        // shutdown and close db (should persist)
-        return o.shutdown();
-      })
+    waitDBInitialized().then(() => {
+      // add modules
+      o.modulesCollection.insert(new Module(modUUID));
+      o.modulesCollection.insert(new Module(modUUID));
+      o.modulesCollection.insert(new Module(modUUID));
+    });
+
+    // shutdown and close db (should persist)
+    return o.shutdown()
       .then(() => {
         // start a new orchestrator pointing to the same db
         o = new Orchestrator({ dbPath: o.dbPath });
-        return o.listen();
+        registerMock();
+
+
+        return waitDBInitialized();
       }).then(() => {
         const modules = o.modulesCollection.find({ service: modUUID });
 

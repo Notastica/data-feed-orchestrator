@@ -23,6 +23,10 @@ export const connect = (url, options) => {
       reject(err);
     });
 
+    context.on('close', () => {
+      logger.warn('Connection to MQ closed');
+    });
+
   });
 };
 

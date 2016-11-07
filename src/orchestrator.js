@@ -152,6 +152,7 @@ class Orchestrator {
       .then(this._connectToRegistrationQueue)
       .then(this._waitForPersistenceModules)
       .then(() => {
+        this._running = true;
         return this.amqpContext.socket('WORKER', { prefetch: this.prefetch });
       }).then(this._connectToMessagesQueue);
   }
@@ -164,7 +165,7 @@ class Orchestrator {
   _waitForPersistenceModules() {
 
     return new Promise((resolve) => {
-      if (this._hasPersistenceModule()) {
+      if (!this._hasPersistenceModule()) {
         logger.debug('No persistence module registered, will wait for 200ms');
         setTimeout(() => {
           this._waitForPersistenceModules().then(resolve);
@@ -230,9 +231,15 @@ class Orchestrator {
    */
   shutdown() {
     return new Promise((resolve) => {
+      let waitAmqp = false;
+
       if (this._running) {
         if (this.amqpContext) {
+          this.amqpContext.on('close', () => {
+            resolve();
+          });
           this.amqpContext.close();
+          waitAmqp = true;
         }
         logger.info(`[${symbols.check}] AMQP disconnected`);
         if (this.esClient) {
@@ -242,8 +249,9 @@ class Orchestrator {
         this._running = false;
       }
       if (this._db) {
-        this._db.close(resolve);
-      } else {
+        this._db.close(!waitAmqp ? resolve : null);
+      }
+      if (!waitAmqp) {
         resolve();
       }
     });
@@ -413,7 +421,7 @@ class Orchestrator {
    * Find modules that matches for the give message
    * ordered by their registration _order
    * @param {Object} message
-   * @param {Object} meta the message metadata
+   * @param {Object} [meta] the message metadata
    * @return {Promise}
    */
   findMatchingModules(message, meta) {

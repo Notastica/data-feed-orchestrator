@@ -292,6 +292,28 @@ describe('Orchestrator', function () {
         });
       });
   });
+
+
+  it('Should fail when no persistence module is registerd', function (done) {
+    // const o = new Orchestrator();
+
+    o = new Orchestrator({ dbPath: temp.path(), registerQueue: dockerNames.getRandomName(false) }); // create new Orchestrator
+
+    o.listen(); // listen async
+
+
+    setTimeout(() => {
+      // noinspection JSAccessibilityCheck
+      o._storeMessage({}).then((message) => {
+        chai.expect(message).to.be.null();
+      }).catch((err) => {
+        chai.expect(err).to.be.not.null();
+        chai.expect(err.message).to.contain('No persistence module registered');
+      }).then(done, done);
+    }, 200);
+
+  });
+
   it('Should restore the database between executions', function () {
 
     const modUUID = uuid.v4();

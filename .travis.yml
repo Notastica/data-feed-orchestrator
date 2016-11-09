@@ -6,19 +6,29 @@ node_js:
 - '5'
 - '6'
 before_install:
+# Repo for newer Node.js versions
+- curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+# Repo for Yarn
+- sudo apt-key adv --fetch-keys http://dl.yarnpkg.com/debian/pubkey.gpg
+- echo "deb http://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+- sudo apt-get update -qq
+- sudo apt-get install -y -qq yarn
 - docker pull elasticsearch:2
 - docker pull rabbitmq:3
 - docker run -d -p 9200:9200 -p 9300:9300 elasticsearch:2
 - docker run -d -p 5671:5671 -p 5672:5672 -p 25672:25672 rabbitmq:3
 - docker ps -a
+cache:
+  directories:
+  - $HOME/.yarn-cache
 install:
-- npm install
+- yarn
 script:
-- npm run check
-- npm run build
-- npm run validate
+- yarn run check
+- yarn run build
+- yarn run validate
 after_success:
-- npm run coveralls
+- yarn run coveralls
 deploy:
   provider: npm
   email: panthro.rafael@gmail.com

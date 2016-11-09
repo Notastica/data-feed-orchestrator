@@ -51,7 +51,7 @@ class Module extends EventEmitter {
     }
 
     options = _.defaults(options, defaults);
-    if (!options instanceof Module) {
+    if (!(options instanceof Module)) {
       logger.debug('Initializing module with options:', options);
     }
 

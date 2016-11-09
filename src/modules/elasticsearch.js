@@ -15,13 +15,15 @@ const elasticsearch = (options) => {
     })
     .then(() => {
       return m.esClient.indices.exists({ index: options.messagesIndex })
-        .then(() => {
-          logger.info(`[${symbols.check}] ElasticSearch already exists [${options.messagesIndex}]`);
-        }).catch(() => {
-          return m.esClient.indices.create({ index: options.messagesIndex })
-            .then(() => {
-              logger.info(`[${symbols.check}] ElasticSearch index created [${options.messagesIndex}]`);
-            });
+        .then((exists) => {
+          if (exists) {
+            logger.info(`[${symbols.check}] ElasticSearch already exists [${options.messagesIndex}]`);
+          } else {
+            return m.esClient.indices.create({ index: options.messagesIndex })
+              .then(() => {
+                logger.info(`[${symbols.check}] ElasticSearch index created [${options.messagesIndex}]`);
+              });
+          }
         });
 
     })

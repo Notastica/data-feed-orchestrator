@@ -51,7 +51,9 @@ class Module extends EventEmitter {
     }
 
     options = _.defaults(options, defaults);
-    logger.debug('Initializing module with options:', options);
+    if (!options instanceof Module) {
+      logger.debug('Initializing module with options:', options);
+    }
 
     // Simple properties that should be added to JSON
     // ---------------------------------------------

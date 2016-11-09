@@ -65,6 +65,56 @@ describe('geocoding module', function () {
 
   });
 
+  it('Should return the message with UNKNOWN location if passed an invalid address', function () {
+
+    const defaultOptions = {
+      registerQueue: `register-${uuid.v4()}`,
+      messagesQueue: `messages-${uuid.v4()}`
+    };
+
+    const apiKey = process.env.GAPI_KEY;
+    let mock = mockPersistence(defaultOptions);
+    const o = new Orchestrator(defaultOptions);
+    const m = geocoding(_.defaults({
+      apiKey: apiKey
+    }, defaultOptions));
+
+    mock.register().then((result) => {
+      mock = result;
+    }); // register mock async
+    return o.listen().then(() => {
+      return m.register();
+    }).then(() => {
+      const pub = o.amqpContext.socket('PUSH');
+      const message = { uuid: uuid.v4(), address: '' };
+
+      pub.connect(o.messagesQueue, () => {
+        pub.write(JSON.stringify(message));
+      });
+
+      return new Promise((resolve) => {
+        let mockReceivedCount = 2;
+
+        mock.on('data', () => {
+          if (--mockReceivedCount <= 0) {
+            if (Object.keys(mock.messages).length > 0) {
+              chai.expect(mock.messages).to.have.contains.key(message.uuid);
+              chai.expect(mock.messages[message.uuid]).to.contains.key('address');
+              chai.expect(mock.messages[message.uuid]).to.contains.key('location');
+              chai.expect(mock.messages[message.uuid].location).to.be.equal('UNKNOWN');
+              resolve();
+            }
+          }
+        });
+      });
+
+
+    });
+
+
+  });
+
+
   it('Should query ES to avoid multiple calls for the same venue', function () {
 
     const defaultOptions = {

@@ -68,7 +68,7 @@ docker run --name orc -v /data --link=mq --link=es -e ENABLE_ELASTICSEARCH=true 
 
 ```
 
-__NOTE:__ There are several environment variables that can be set when launching the orchestrator, see them all in [app.js](./src/app.js)
+__NOTE:__ There are several environment variables that can be set when launching the orchestrator, see them all in [options.js](./src/options.js)
 
  - Create your module
 

@@ -20,7 +20,7 @@ let o;
 describe('Orchestrator', function () {
 
   const registerMock = function () {
-    mock({
+    return mock({
       registerQueue: o.registerQueue
     }).register();
   };
@@ -382,6 +382,22 @@ describe('Orchestrator', function () {
     return o.listen()
       .then(() => {
         return o.listen();
+      });
+  });
+
+  it('Should always only have 1 persistence module', function () {
+    registerMock();
+    return o.listen()
+      .then(() => {
+        chai.expect(o.modulesCollection.find({ type: 'persistence' }))
+          .to.have.lengthOf(1);
+        return registerMock()
+          .then((newModule) => {
+            const registeredModules = o.modulesCollection.find({ type: 'persistence' });
+
+            chai.expect(registeredModules).to.have.lengthOf(1);
+            chai.expect(registeredModules[0].name).to.be.equal(newModule.name);
+          });
       });
   });
 

@@ -381,7 +381,7 @@ class Orchestrator {
    */
   isRegistered(module) {
     module = Orchestrator.checkModule(module);
-    return this.modulesCollection.find({ uuid: module.uuid }).length > 0;
+    return this.modulesCollection.find({ service: module.service }).length > 0;
   }
 
   /**
@@ -395,12 +395,6 @@ class Orchestrator {
       module = Orchestrator.checkModule(module);
       logger.info('Registering new module', module.toJSON());
 
-      if (this.isRegistered(module)) {
-        logger.info(`Module ${module.name} already registered for uuid ${module.uuid}`);
-        this.modulesCollection.removeWhere({ uuid: module.uuid });
-        return this.modulesCollection.insert(module);
-      }
-
       // Only 1 persistence module allowed, the new one always replace the old one
       if (module.type === 'persistence' && this._hasPersistenceModule()) {
         this.modulesCollection.removeWhere((m) => {
@@ -410,6 +404,11 @@ class Orchestrator {
       module.order = ++this._order;
       module.messagesQueue = this.messagesQueue;
       module.workerQueueName = this.generateModuleQueueName(module);
+
+      if (this.isRegistered(module)) {
+        logger.info(`Module ${module.name} already registered for uuid ${module.uuid}`);
+        this.modulesCollection.removeWhere({ service: module.service });
+      }
       return this.modulesCollection.insert(module);
     });
   }

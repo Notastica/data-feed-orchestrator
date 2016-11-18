@@ -1,7 +1,6 @@
 /**
  * Common test Dependencies
  */
-
 import * as chai from 'chai';
 import dirtyChai from 'dirty-chai';
 import Orchestrator from '../src/orchestrator';
@@ -399,6 +398,29 @@ describe('Orchestrator', function () {
             chai.expect(registeredModules[0].name).to.be.equal(newModule.name);
           });
       });
+  });
+
+  it('Should return the same messagesQueue for the same services', function () {
+
+    const service = dockerNames.getRandomName();
+    let workerQueueName;
+
+    registerMock();
+    return o.listen()
+      .then(() => {
+        return o.register(new Module(service));
+      })
+      .then((m) => {
+        chai.expect(m).not.to.be.undefined();
+        workerQueueName = m.workerQueueName;
+      })
+      .then(() => {
+        return o.register(new Module(service));
+      })
+      .then((m) => {
+        chai.expect(m.workerQueueName).to.be.equal(workerQueueName);
+      });
+
   });
 
 })

@@ -20,6 +20,10 @@ mq.connect(o.amqpURL)
   })
   .then(() => {
     logger.info(`Orchestrator ${o.name} ready to receive new modules in the queue ${o.registerQueue}`);
+  })
+  .catch((err) => {
+    logger.warn('Error connecting to MQ, exiting process, make sure restart behaviors are in place', err);
+    process.exit(1);
   });
 
 process.on('SIGINT', function () {

@@ -1,4 +1,4 @@
-import uuid from 'node-uuid';
+import uuid from 'uuid';
 import names from 'docker-names';
 import assert from 'assert';
 import * as mq from './mq/connection';

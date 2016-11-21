@@ -54,9 +54,9 @@
     "jsonpath": "^0.2.6",
     "lodash": "4.17.1",
     "lokijs": "^1.4.1",
-    "node-uuid": "^1.4.7",
     "rabbit.js": "0.4.4",
     "temp": "0.8.3",
+    "uuid": "^3.0.0",
     "winston": "^2.2.0"
   },
   "devDependencies": {

@@ -4,7 +4,7 @@
 import * as chai from 'chai';
 import dirtyChai from 'dirty-chai';
 import Orchestrator from '../src/orchestrator';
-import uuid from 'node-uuid';
+import uuid from 'uuid';
 import Module from '../src/module';
 import dockerNames from 'docker-names';
 import * as temp from 'temp';

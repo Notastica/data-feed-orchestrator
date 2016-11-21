@@ -7,7 +7,7 @@ import * as mq from './mq/connection';
 import * as symbols from './utils/symbols';
 import Promise from 'bluebird';
 import _ from 'lodash/core';
-import uuid from 'node-uuid';
+import uuid from 'uuid';
 import * as temp from 'temp';
 import * as JSON from 'json3';
 

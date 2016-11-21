@@ -6,7 +6,7 @@ import * as chai from 'chai';
 import dirtyChai from 'dirty-chai';
 import Orchestrator from '../src/orchestrator';
 import Module from '../src/module';
-import uuid from 'node-uuid';
+import uuid from 'uuid';
 import logger from '../src/logging/logger';
 import mock from './mock-persistence-module';
 

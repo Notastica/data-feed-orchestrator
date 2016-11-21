@@ -5,7 +5,7 @@
 import * as chai from 'chai';
 import dirtyChai from 'dirty-chai';
 import Orchestrator from '../src/orchestrator';
-import uuid from 'node-uuid';
+import uuid from 'uuid';
 import logger from '../src/logging/logger';
 import elasticsearch from '../src/modules/elasticsearch';
 

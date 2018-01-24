@@ -11,6 +11,8 @@
  
 # A data feed orchestrator
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/Notastica/data-feed-orchestrator.svg)](https://greenkeeper.io/)
+
 ## Why?
 
   After some investigation, we could not find an easy to setup tool that would [https://en.wikipedia.org/wiki/Magic_(programming)](automagically) handle data _accelerators_ in a distributed system
